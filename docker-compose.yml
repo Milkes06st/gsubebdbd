@@ -16,6 +16,6 @@ services:
     ports:
       - "3000:80"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
     depends_on:
       - app
