@@ -17,10 +17,7 @@ async function startServer() {
     next();
   });
 
-  // API constraints for high-throughput body
-  app.use(express.raw({ type: '*/*', limit: '100mb' }));
-
-  // --- Speed Test Endpoints ---
+// --- Speed Test Endpoints ---
 
   // Ping endpoint
   app.get("/api/ping", (req, res) => {
@@ -78,8 +75,8 @@ async function startServer() {
     sendChunk();
   });
 
-  // Upload endpoint - discards received data
-  app.post("/api/upload", (req, res) => {
+  // API constraints for high-throughput body - only for upload
+  app.post("/api/upload", express.raw({ type: '*/*', limit: '100mb' }), (req, res) => {
     res.status(200).json({ received: req.body ? req.body.length : 0 });
   });
 
@@ -116,9 +113,12 @@ async function startServer() {
 
       const { download, upload, ping, city, country, isp, ip } = req.body;
       
-      console.log(`Telegram Notification: Ping: ${ping}, Dn: ${download}, Up: ${upload}, IP: ${ip}`);
+      console.log(`Telegram Notification Data:`, req.body);
       
-      const escapeHtml = (str: any) => String(str || 'Unknown').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const escapeHtml = (val: any) => {
+        if (val === undefined || val === null || val === "") return 'Unknown';
+        return String(val).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      };
       
       const text = `📊 <b>Новый замер скорости</b>
       

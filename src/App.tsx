@@ -114,21 +114,32 @@ export default function App() {
     setProgress(1);
 
     // Send to Telegram silently via proxy
-    try {
-      fetch('/api/telegram', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          download: finalDown.toFixed(1),
-          upload: finalUp.toFixed(1),
-          ping: finalPing,
-          city: networkInfo?.city,
-          country: networkInfo?.country,
-          isp: networkInfo?.isp,
-          ip: networkInfo?.ip
-        })
-      });
-    } catch(e) {}
+    const sendTelegram = async () => {
+      try {
+        let currentInfo = networkInfo;
+        if (!currentInfo) {
+          currentInfo = await fetchNetworkInfo();
+        }
+
+        await fetch('/api/telegram', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            download: finalDown.toFixed(1),
+            upload: finalUp.toFixed(1),
+            ping: Math.round(finalPing),
+            city: currentInfo?.city,
+            country: currentInfo?.country,
+            isp: currentInfo?.isp,
+            ip: currentInfo?.ip
+          })
+        });
+      } catch(e) {
+        console.error("Failed to send telegram notification", e);
+      }
+    };
+    
+    sendTelegram();
 
     setTimeout(() => {
       if (confettiCanvasRef.current) {
