@@ -110,17 +110,17 @@ async function startServer() {
 
       const { download, upload, ping, city, country, isp, ip } = req.body;
       
-      const escapeMd = (str: string) => str.replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
+      const escapeHtml = (str: any) => String(str || 'Unknown').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       
-      const text = `📊 *Новый замер скорости*
+      const text = `📊 <b>Новый замер скорости</b>
       
-🌍 *Локация:* ${escapeMd(city || 'Unknown')}, ${escapeMd(country || 'Unknown')}
-🏢 *ISP:* ${escapeMd(isp || 'Unknown')}
-🌐 *IP:* ||${escapeMd(ip || 'Unknown')}||
+🌍 <b>Локация:</b> ${escapeHtml(city)}, ${escapeHtml(country)}
+🏢 <b>ISP:</b> ${escapeHtml(isp)}
+🌐 <b>IP:</b> <tg-spoiler>${escapeHtml(ip)}</tg-spoiler>
 
-📥 *Скачивание:* ${escapeMd(download?.toString() || '0')} Мбит/с
-📤 *Выгрузка:* ${escapeMd(upload?.toString() || '0')} Мбит/с
-⏱ *Пинг:* ${escapeMd(ping?.toString() || '0')} мс
+📥 <b>Скачивание:</b> ${escapeHtml(download)} Мбит/с
+📤 <b>Выгрузка:</b> ${escapeHtml(upload)} Мбит/с
+⏱ <b>Пинг:</b> ${escapeHtml(ping)} мс
 `;
 
       const tgUrl = `https://api.telegram.org/bot${token}/sendMessage`;
@@ -132,7 +132,7 @@ async function startServer() {
             body: JSON.stringify({
                 chat_id: targetChatId,
                 text: text,
-                parse_mode: "MarkdownV2"
+                parse_mode: "HTML"
             })
         });
       }
