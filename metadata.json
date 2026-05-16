@@ -1,0 +1,6 @@
+{
+  "name": "SpeedProbe",
+  "description": "Internet Speed Test showing Ping, Download, Upload, IP, Country, and ISP. Results shareable.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
