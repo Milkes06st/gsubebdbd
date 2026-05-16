@@ -94,12 +94,14 @@ export default function App() {
   };
 
   const shareResults = async () => {
-    const text = `🚀 Astrotest Results:
+    const text = `🚀 Результаты Astrotest:
 ⬇️ Загрузка: ${downloadMbps.toFixed(1)} Мбит/с
 ⬆️ Выгрузка: ${uploadMbps.toFixed(1)} Мбит/с
 Пинг: ${ping}мс
 🌐 Провайдер: ${networkInfo?.isp || "Неизвестно"}
-📍 Локация: ${networkInfo?.city || "Неизвестно"}, ${networkInfo?.country || "Неизвестно"}`;
+📍 Локация: ${networkInfo?.city || "Неизвестно"}, ${networkInfo?.country || "Неизвестно"}
+
+🛸 Узнай свою скорость: https://astrotest.duckdns.org`;
 
     if (navigator.share) {
       try {
