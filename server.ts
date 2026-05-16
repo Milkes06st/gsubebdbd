@@ -111,12 +111,31 @@ async function startServer() {
         }
       }
 
-      const { download, upload, ping, city, country, isp, ip } = req.body;
+      const { download, upload, ping } = req.body;
+      let { city, country, isp, ip } = req.body;
       
       console.log(`Telegram Notification Data:`, req.body);
+
+      // Server-side fallback for missing location info
+      if (!city || city === "Unknown") {
+        try {
+          const clientIpHeader = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || "").toString().split(',')[0].trim();
+          const ipParam = clientIpHeader && !/^(::f{4}:)?(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.|127\.|::1)/.test(clientIpHeader) ? clientIpHeader : "";
+          const r = await fetch(`https://ipwho.is/${ipParam}`);
+          if (r.ok) {
+            const d = await r.json();
+            if (d.success) {
+              city = city && city !== "Unknown" ? city : d.city;
+              country = country && country !== "Unknown" ? country : d.country;
+              isp = isp && isp !== "Unknown" ? isp : (d.connection?.isp || d.connection?.org);
+              ip = ip && ip !== "Unknown" ? ip : d.ip;
+            }
+          }
+        } catch (e) {}
+      }
       
       const escapeHtml = (val: any) => {
-        if (val === undefined || val === null || val === "") return 'Unknown';
+        if (val === undefined || val === null || val === "" || val === "Unknown") return 'Неизвестно';
         return String(val).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       };
       
