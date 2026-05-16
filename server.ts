@@ -82,6 +82,29 @@ async function startServer() {
     res.status(200).json({ received: req.body ? req.body.length : 0 });
   });
 
+  // Proxy IP Info to prevent adblock/cors issues
+  app.get("/api/ip", async (req, res) => {
+    try {
+      const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || "").toString().split(',')[0].trim();
+      const ipParam = clientIp && clientIp !== "::1" && clientIp !== "127.0.0.1" ? clientIp : "";
+      
+      const response = await fetch(`https://ipwho.is/${ipParam}`);
+      if (!response.ok) throw new Error("Fetch failed");
+      const data = await response.json();
+      res.json(data);
+    } catch (err) {
+      try {
+        const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || "").toString().split(',')[0].trim();
+        const ipParam = clientIp && clientIp !== "::1" && clientIp !== "127.0.0.1" ? `${clientIp}/` : "";
+        const fallback = await fetch(`https://ipinfo.io/${ipParam}json`);
+        const fallbackData = await fallback.json();
+        res.json(fallbackData);
+      } catch (err2) {
+        res.status(500).json({ error: "Failed to fetch IP info" });
+      }
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

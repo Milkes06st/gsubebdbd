@@ -7,14 +7,14 @@ export interface NetworkInfo {
 
 export async function fetchNetworkInfo(): Promise<NetworkInfo | null> {
   try {
-    const response = await fetch("https://ipwho.is/");
-    if (!response.ok) return null;
+    const response = await fetch("/api/ip");
+    if (!response.ok) throw new Error("Failed to fetch proxy IP info");
     const data = await response.json();
     return {
       ip: data.ip,
-      isp: data.connection?.isp || "Unknown ISP",
-      country: data.country,
-      city: data.city,
+      isp: data.connection?.isp || data.org || "Unknown ISP",
+      country: data.country_name || data.country || "Unknown Country",
+      city: data.city || "Unknown City",
     };
   } catch (err) {
     console.error("Failed to fetch network info", err);

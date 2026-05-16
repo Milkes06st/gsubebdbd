@@ -7,6 +7,32 @@ import { cn } from "./lib/utils";
 
 type TestPhase = "idle" | "pinging" | "downloading" | "uploading" | "done";
 
+const AstroLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <g stroke="currentColor" strokeWidth="2" strokeOpacity="0.8">
+      <ellipse cx="40" cy="50" rx="30" ry="30" />
+      <ellipse cx="40" cy="50" rx="20" ry="32" transform="rotate(20 40 50)" />
+      <ellipse cx="40" cy="50" rx="20" ry="32" transform="rotate(60 40 50)" />
+      <ellipse cx="40" cy="50" rx="20" ry="32" transform="rotate(-30 40 50)" />
+      <ellipse cx="40" cy="50" rx="12" ry="34" transform="rotate(45 40 50)" />
+      <ellipse cx="40" cy="50" rx="32" ry="15" transform="rotate(10 40 50)" />
+    </g>
+    <g fill="currentColor" opacity="0.9">
+      {[
+        { x: 75, y: 30, size: 4 },
+        { x: 82, y: 42, size: 5 },
+        { x: 85, y: 55, size: 5 },
+        { x: 80, y: 68, size: 4 },
+        { x: 70, y: 78, size: 3.5 }
+      ].map((star, i) => (
+        <path key={i}
+          d={`M${star.x},${star.y - star.size} l${star.size * 0.3},${star.size * 0.7} l${star.size * 0.7},${star.size * 0.1} l-${star.size * 0.5},${star.size * 0.5} l${star.size * 0.2},${star.size * 0.8} l-${star.size * 0.7},-${star.size * 0.4} l-${star.size * 0.7},${star.size * 0.4} l${star.size * 0.2},-${star.size * 0.8} l-${star.size * 0.5},-${star.size * 0.5} l${star.size * 0.7},-${star.size * 0.1} z`}
+        />
+      ))}
+    </g>
+  </svg>
+);
+
 export default function App() {
   const [phase, setPhase] = useState<TestPhase>("idle");
   const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
@@ -116,8 +142,12 @@ export default function App() {
           title: "Astrotest",
           text: text,
         });
-      } catch (err) {
-        console.error("Shared cancelled or failed", err);
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          console.error("Share failed, falling back to clipboard", err);
+          await navigator.clipboard.writeText(text);
+          alert("Результаты скопированы!");
+        }
       }
     } else {
       await navigator.clipboard.writeText(text);
@@ -126,16 +156,22 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f0f13] text-slate-50 font-sans flex flex-col items-center p-4 sm:p-8">
-      
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-2xl py-6 flex items-center justify-between"
-      >
+    <div className="min-h-screen bg-[#0f0f13] text-slate-50 font-sans flex flex-col items-center p-4 sm:p-8 relative overflow-hidden">
+      {/* Background space effects */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[100px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[100px]" />
+      </div>
+
+      <div className="z-10 w-full flex flex-col items-center w-full">
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-2xl py-6 flex items-center justify-between"
+        >
         <div className="text-3xl font-black tracking-tight flex items-center gap-2">
-          <Globe2 className="h-8 w-8 text-blue-500" />
+          <AstroLogo className="h-10 w-10 text-blue-500" />
           <span>Astro<span className="text-blue-500">test</span></span>
         </div>
         {phase === "done" && (
@@ -226,6 +262,7 @@ export default function App() {
         </AnimatePresence>
 
       </motion.div>
+      </div>
     </div>
   );
 }
@@ -345,14 +382,19 @@ function HalfCircleGauge({ value, phase, onStart }: { value: number; phase: Test
 
           {/* Thumb Circle */}
           {(isTesting || phase === "done") && (
-            <motion.circle
-              cx={cx} cy={cy} r="14"
-              fill="white"
-              initial={{ x: cx - r - cx + 20, y: cy - cy }} // start at left edge logically
-              animate={{ x: thumbX - cx, y: thumbY - cy }}
+            <motion.g
+              initial={{ rotate: 0 }}
+              animate={{ rotate: 180 * progressRatio }}
+              style={{ originX: "50%", originY: "50%" }}
               transition={{ type: "spring", stiffness: 30, damping: 15 }}
-              style={{ filter: `drop-shadow(0px 0px 8px ${activeColor}80)` }}
-            />
+            >
+              <circle cx={cx} cy={cy} r={r} fill="transparent" />
+              <circle
+                cx={cx - r} cy={cy} r="14"
+                fill="white"
+                style={{ filter: `drop-shadow(0px 0px 8px ${activeColor}80)` }}
+              />
+            </motion.g>
           )}
         </svg>
 

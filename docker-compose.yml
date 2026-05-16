@@ -1,6 +1,19 @@
 version: '3.8'
 
 services:
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
   app:
     build: .
     restart: always
@@ -9,3 +22,6 @@ services:
     environment:
       - NODE_ENV=production
 
+volumes:
+  caddy_data:
+  caddy_config:
