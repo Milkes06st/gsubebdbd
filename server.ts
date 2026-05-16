@@ -147,19 +147,66 @@ async function startServer() {
   app.get("/api/ip", async (req, res) => {
     try {
       const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || "").toString().split(',')[0].trim();
-      const ipParam = clientIp && clientIp !== "::1" && clientIp !== "127.0.0.1" ? `${clientIp}/` : "";
+      const ipParam = clientIp && clientIp !== "::1" && clientIp !== "127.0.0.1" ? clientIp : "";
       
-      const response = await fetch(`https://ipwho.is/${ipParam}`);
-      if (!response.ok) throw new Error("Fetch failed");
-      const data = await response.json();
-      
-      const ipInfo = {
-         ip: data.ip,
-         isp: data.connection?.isp || "Unknown ISP",
-         country: data.country,
-         country_code: data.country_code,
-         city: data.city,
-      };
+      let ipInfo: any = null;
+
+      // Try 1: ipwho.is
+      if (!ipInfo) {
+        try {
+          const r1 = await fetch(`https://ipwho.is/${ipParam}`);
+          if (r1.ok) {
+              const d1 = await r1.json();
+              if (d1.success) {
+                  ipInfo = {
+                     ip: d1.ip,
+                     isp: d1.connection?.isp || "Unknown ISP",
+                     country: d1.country,
+                     country_code: d1.country_code,
+                     city: d1.city
+                  };
+              }
+          }
+        } catch (e) {}
+      }
+
+      // Try 2: geojs.io
+      if (!ipInfo) {
+        try {
+          const r2 = await fetch(`https://get.geojs.io/v1/ip/geo/${ipParam}.json`);
+          if (r2.ok) {
+              const d2 = await r2.json();
+              ipInfo = {
+                 ip: d2.ip,
+                 isp: d2.organization_name || "Unknown ISP",
+                 country: d2.country,
+                 country_code: d2.country_code,
+                 city: d2.city
+              };
+          }
+        } catch(e) {}
+      }
+
+      // Try 3: ip-api.com
+      if (!ipInfo) {
+        try {
+          const r3 = await fetch(`http://ip-api.com/json/${ipParam}`);
+          if (r3.ok) {
+             const d3 = await r3.json();
+             if (d3.status === "success") {
+                 ipInfo = {
+                   ip: d3.query,
+                   isp: d3.isp || d3.org,
+                   country: d3.country,
+                   country_code: d3.countryCode,
+                   city: d3.city
+                 };
+             }
+          }
+        } catch(e) {}
+      }
+
+      if (!ipInfo) throw new Error("All APIs failed");
 
       if (ipInfo.country_code) {
          try {
@@ -171,32 +218,7 @@ async function startServer() {
 
       res.json(ipInfo);
     } catch (err) {
-      try {
-        const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || "").toString().split(',')[0].trim();
-        const ipParam = clientIp && clientIp !== "::1" && clientIp !== "127.0.0.1" ? `${clientIp}/` : "";
-        const fallback = await fetch(`https://ipinfo.io/${ipParam}json`);
-        const fallbackData = await fallback.json();
-        
-     const ipInfo = {
-         ip: fallbackData.ip,
-         isp: fallbackData.org || "Unknown ISP",
-         country: fallbackData.country,
-         country_code: fallbackData.country,
-         city: fallbackData.city,
-        };
-
-        if (ipInfo.country_code) {
-         try {
-           const code = ipInfo.country_code.toUpperCase();
-           const flag = String.fromCodePoint(...[...code].map(c => 127397 + c.charCodeAt(0)));
-           ipInfo.country = `${ipInfo.country} ${flag}`;
-         } catch(e) {}
-        }
-        
-        res.json(ipInfo);
-      } catch (err2) {
-        res.status(500).json({ error: "Failed to fetch IP info" });
-      }
+      res.status(500).json({ error: "Failed to fetch IP info" });
     }
   });
 
