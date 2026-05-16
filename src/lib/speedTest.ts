@@ -7,13 +7,13 @@ export interface NetworkInfo {
 
 export async function fetchNetworkInfo(): Promise<NetworkInfo | null> {
   try {
-    const response = await fetch("https://ipapi.co/json/");
+    const response = await fetch("https://ipwho.is/");
     if (!response.ok) return null;
     const data = await response.json();
     return {
       ip: data.ip,
-      isp: data.org || "Unknown ISP",
-      country: data.country_name,
+      isp: data.connection?.isp || "Unknown ISP",
+      country: data.country,
       city: data.city,
     };
   } catch (err) {
