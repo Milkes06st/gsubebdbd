@@ -1,3 +1,7 @@
+:80 {
+    reverse_proxy app:3000
+}
+
 astrotest.duckdns.org {
     reverse_proxy app:3000
 }

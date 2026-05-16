@@ -98,14 +98,20 @@ async function startServer() {
         try {
           const updatesReq = await fetch(`https://api.telegram.org/bot${token}/getUpdates`);
           const updates = await updatesReq.json();
-          if (updates.ok && updates.result.length > 0) {
-            const lastMsg = updates.result[updates.result.length - 1];
-            targetChatId = lastMsg.message?.chat?.id || lastMsg.my_chat_member?.chat?.id || lastMsg.edited_message?.chat?.id;
-            if (targetChatId) {
-              cachedChatId = targetChatId; // remember it for future requests
+          if (updates.ok && updates.result) {
+            // Check private messages, group messages, join events, etc.
+            for (const item of updates.result.reverse()) {
+              const id = item.message?.chat?.id || item.my_chat_member?.chat?.id || item.channel_post?.chat?.id;
+              if (id) {
+                targetChatId = id.toString();
+                cachedChatId = targetChatId;
+                break;
+              }
             }
           }
-        } catch(e) {}
+        } catch(e) {
+          console.error("Telegram getUpdates error:", e);
+        }
       }
 
       const { download, upload, ping, city, country, isp, ip } = req.body;
@@ -123,18 +129,27 @@ async function startServer() {
 ⏱ <b>Пинг:</b> ${escapeHtml(ping)} мс
 `;
 
-      const tgUrl = `https://api.telegram.org/bot${token}/sendMessage`;
-      
       if (targetChatId) {
-        fetch(tgUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                chat_id: targetChatId,
-                text: text,
-                parse_mode: "HTML"
-            })
-        });
+        const tgUrl = `https://api.telegram.org/bot${token}/sendMessage`;
+        try {
+          const tgRes = await fetch(tgUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                  chat_id: targetChatId,
+                  text: text,
+                  parse_mode: "HTML"
+              })
+          });
+          const tgData = await tgRes.json();
+          if (!tgData.ok) {
+            console.error("Telegram sendMessage error:", tgData);
+          }
+        } catch (e) {
+          console.error("Telegram fetch error:", e);
+        }
+      } else {
+        console.warn("Telegram: targetChatId not found. Send a message to your bot first.");
       }
 
       res.status(200).send("OK");
