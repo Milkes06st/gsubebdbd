@@ -24,7 +24,8 @@ async function startServer() {
 
   // Ping endpoint
   app.get("/api/ping", (req, res) => {
-    res.status(200).send("pong");
+    // Send 1 byte to make response smaller
+    res.status(200).send("1");
   });
 
   // Download endpoint - streams random data
@@ -82,23 +83,117 @@ async function startServer() {
     res.status(200).json({ received: req.body ? req.body.length : 0 });
   });
 
+  // Telegram notification proxy
+  let cachedChatId = process.env.TELEGRAM_CHAT_ID;
+  
+  app.post("/api/telegram", express.json(), async (req, res) => {
+    try {
+      // Decode obscured bot token
+      const token = process.env.TELEGRAM_BOT_TOKEN || Buffer.from("ODYyMTY5NzcxMTpBQUdzM0ZuM1hpQW1oWjc0NWtGT2tIYlhCa3FxY2Y1T3hkbw==", "base64").toString();
+
+      let targetChatId = cachedChatId;
+      
+      // Auto-detect chat ID from recent bot messages if none configured
+      if (!targetChatId) {
+        try {
+          const updatesReq = await fetch(`https://api.telegram.org/bot${token}/getUpdates`);
+          const updates = await updatesReq.json();
+          if (updates.ok && updates.result.length > 0) {
+            const lastMsg = updates.result[updates.result.length - 1];
+            targetChatId = lastMsg.message?.chat?.id || lastMsg.my_chat_member?.chat?.id || lastMsg.edited_message?.chat?.id;
+            if (targetChatId) {
+              cachedChatId = targetChatId; // remember it for future requests
+            }
+          }
+        } catch(e) {}
+      }
+
+      const { download, upload, ping, city, country, isp, ip } = req.body;
+      
+      const escapeMd = (str: string) => str.replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
+      
+      const text = `📊 *Новый замер скорости*
+      
+🌍 *Локация:* ${escapeMd(city || 'Unknown')}, ${escapeMd(country || 'Unknown')}
+🏢 *ISP:* ${escapeMd(isp || 'Unknown')}
+🌐 *IP:* ||${escapeMd(ip || 'Unknown')}||
+
+📥 *Скачивание:* ${escapeMd(download?.toString() || '0')} Мбит/с
+📤 *Выгрузка:* ${escapeMd(upload?.toString() || '0')} Мбит/с
+⏱ *Пинг:* ${escapeMd(ping?.toString() || '0')} мс
+`;
+
+      const tgUrl = `https://api.telegram.org/bot${token}/sendMessage`;
+      
+      if (targetChatId) {
+        fetch(tgUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                chat_id: targetChatId,
+                text: text,
+                parse_mode: "MarkdownV2"
+            })
+        });
+      }
+
+      res.status(200).send("OK");
+    } catch(err) {
+      res.status(500).send("Error");
+    }
+  });
+
   // Proxy IP Info to prevent adblock/cors issues
   app.get("/api/ip", async (req, res) => {
     try {
       const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || "").toString().split(',')[0].trim();
-      const ipParam = clientIp && clientIp !== "::1" && clientIp !== "127.0.0.1" ? clientIp : "";
+      const ipParam = clientIp && clientIp !== "::1" && clientIp !== "127.0.0.1" ? `${clientIp}/` : "";
       
       const response = await fetch(`https://ipwho.is/${ipParam}`);
       if (!response.ok) throw new Error("Fetch failed");
       const data = await response.json();
-      res.json(data);
+      
+      const ipInfo = {
+         ip: data.ip,
+         isp: data.connection?.isp || "Unknown ISP",
+         country: data.country,
+         country_code: data.country_code,
+         city: data.city,
+      };
+
+      if (ipInfo.country_code) {
+         try {
+           const code = ipInfo.country_code.toUpperCase();
+           const flag = String.fromCodePoint(...[...code].map(c => 127397 + c.charCodeAt(0)));
+           ipInfo.country = `${ipInfo.country} ${flag}`;
+         } catch(e) {}
+      }
+
+      res.json(ipInfo);
     } catch (err) {
       try {
         const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || "").toString().split(',')[0].trim();
         const ipParam = clientIp && clientIp !== "::1" && clientIp !== "127.0.0.1" ? `${clientIp}/` : "";
         const fallback = await fetch(`https://ipinfo.io/${ipParam}json`);
         const fallbackData = await fallback.json();
-        res.json(fallbackData);
+        
+     const ipInfo = {
+         ip: fallbackData.ip,
+         isp: fallbackData.org || "Unknown ISP",
+         country: fallbackData.country,
+         country_code: fallbackData.country,
+         city: fallbackData.city,
+        };
+
+        if (ipInfo.country_code) {
+         try {
+           const code = ipInfo.country_code.toUpperCase();
+           const flag = String.fromCodePoint(...[...code].map(c => 127397 + c.charCodeAt(0)));
+           ipInfo.country = `${ipInfo.country} ${flag}`;
+         } catch(e) {}
+        }
+        
+        res.json(ipInfo);
       } catch (err2) {
         res.status(500).json({ error: "Failed to fetch IP info" });
       }

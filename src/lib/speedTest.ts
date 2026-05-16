@@ -23,26 +23,33 @@ export async function fetchNetworkInfo(): Promise<NetworkInfo | null> {
 }
 
 export async function measurePing(): Promise<number> {
-  const samples = 10;
-  let totalTime = 0;
-  let successfulPings = 0;
+  const samples = 6;
+  const pings: number[] = [];
+
+  // Warmup request to establish TCP/TLS connection
+  try {
+    await fetch(`/api/ping?t=warmup`, { cache: "no-store" });
+  } catch (e) {}
 
   for (let i = 0; i < samples; i++) {
     const start = performance.now();
     try {
-      await fetch(`/api/ping?t=${Date.now()}`, { cache: "no-store" });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      await fetch(`/api/ping?t=${performance.now()}`, { cache: "no-store", signal: controller.signal });
+      clearTimeout(timeoutId);
       const end = performance.now();
-      totalTime += end - start;
-      successfulPings++;
+      pings.push(end - start);
     } catch {
       // Ignore failed pings
     }
-    // minimal sleep
-    await new Promise(r => setTimeout(r, 50));
   }
 
-  if (successfulPings === 0) return 0;
-  return Math.round(totalTime / successfulPings);
+  if (pings.length === 0) return 0;
+  
+  // Sort and take the lowest ping (most representative of raw network latency without JS/OS jitter)
+  pings.sort((a, b) => a - b);
+  return Math.round(pings[0]);
 }
 
 export async function measureDownloadSpeed(
