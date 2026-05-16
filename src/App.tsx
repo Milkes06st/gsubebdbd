@@ -391,9 +391,6 @@ function HalfCircleGauge({ value, phase, onStart }: { value: number; phase: Test
           </AnimatePresence>
         </div>
       </div>
-      
-      {/* Confetti Canvas */}
-      <canvas ref={confettiCanvasRef} className="pointer-events-none fixed inset-0 w-full h-full z-50" />
     </div>
   );
 }
