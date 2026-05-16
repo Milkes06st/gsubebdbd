@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, RotateCcw, Share2, Activity, ArrowDown, ArrowUp, Globe2, MapPin } from "lucide-react";
 import confetti from "canvas-confetti";
@@ -15,6 +15,7 @@ export default function App() {
   const [uploadMbps, setUploadMbps] = useState<number>(0);
   const [progress, setProgress] = useState<number>(0);
   const [isBoostMode, setIsBoostMode] = useState(false);
+  const confettiCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (window.location.pathname.toLowerCase() === '/boost100') {
@@ -80,15 +81,21 @@ export default function App() {
     setProgress(1);
 
     setTimeout(() => {
-      try {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ["#3b82f6", "#a855f7", "#10b981"],
-        });
-      } catch (e) {
-        console.warn("Confetti failed", e);
+      if (confettiCanvasRef.current) {
+        try {
+          const myConfetti = confetti.create(confettiCanvasRef.current, {
+            resize: true,
+            useWorker: true
+          });
+          myConfetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ["#3b82f6", "#a855f7", "#10b981"],
+          });
+        } catch (e) {
+          console.warn("Confetti failed", e);
+        }
       }
     }, 100);
   };
@@ -384,6 +391,9 @@ function HalfCircleGauge({ value, phase, onStart }: { value: number; phase: Test
           </AnimatePresence>
         </div>
       </div>
+      
+      {/* Confetti Canvas */}
+      <canvas ref={confettiCanvasRef} className="pointer-events-none fixed inset-0 w-full h-full z-50" />
     </div>
   );
 }
