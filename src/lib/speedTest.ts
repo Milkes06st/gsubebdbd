@@ -7,7 +7,27 @@ export interface NetworkInfo {
 
 export async function fetchNetworkInfo(): Promise<NetworkInfo | null> {
   try {
-    const response = await fetch("/api/ip");
+    // Attempt to get real IP from frontend to bypass Docker networking hiding it
+    let clientIp = "";
+    try {
+      const traceRes = await fetch("https://1.1.1.1/cdn-cgi/trace", { cache: "no-store" });
+      const traceText = await traceRes.text();
+      const ipMatch = traceText.match(/ip=(.+)/);
+      if (ipMatch && ipMatch[1]) {
+        clientIp = ipMatch[1].trim();
+      }
+    } catch(e) {}
+
+    if (!clientIp) {
+      try {
+        const ipifyRes = await fetch("https://api.ipify.org?format=json");
+        const ipifyData = await ipifyRes.json();
+        if (ipifyData.ip) clientIp = ipifyData.ip;
+      } catch(e) {}
+    }
+
+    const url = clientIp ? `/api/ip?ip=${encodeURIComponent(clientIp)}` : "/api/ip";
+    const response = await fetch(url);
     if (!response.ok) throw new Error("Failed to fetch proxy IP info");
     const data = await response.json();
     

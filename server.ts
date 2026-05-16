@@ -146,8 +146,14 @@ async function startServer() {
   // Proxy IP Info to prevent adblock/cors issues
   app.get("/api/ip", async (req, res) => {
     try {
-      const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || "").toString().split(',')[0].trim();
-      const ipParam = clientIp && clientIp !== "::1" && clientIp !== "127.0.0.1" ? clientIp : "";
+      let clientIp = req.query.ip as string;
+      if (!clientIp) {
+        clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || "").toString().split(',')[0].trim();
+      }
+      
+      // If clientIp is a private docker IP like 172.x.x.x or 192.168.x.x or ::ffff:172.x, strip it so the server fetches its own IP rather than failing
+      const isPrivate = /^(::f{4}:)?(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.|127\.|::1)/.test(clientIp);
+      const ipParam = (clientIp && !isPrivate) ? clientIp : "";
       
       let ipInfo: any = null;
 
