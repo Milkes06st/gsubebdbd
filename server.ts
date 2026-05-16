@@ -116,6 +116,8 @@ async function startServer() {
 
       const { download, upload, ping, city, country, isp, ip } = req.body;
       
+      console.log(`Telegram Notification: Ping: ${ping}, Dn: ${download}, Up: ${upload}, IP: ${ip}`);
+      
       const escapeHtml = (str: any) => String(str || 'Unknown').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       
       const text = `📊 <b>Новый замер скорости</b>
@@ -153,8 +155,21 @@ async function startServer() {
       }
 
       res.status(200).send("OK");
-    } catch(err) {
-      res.status(500).send("Error");
+    } catch(err: any) {
+      console.error("Critical Telegram Proxy Error:", err);
+      res.status(500).send("Error: " + err.message);
+    }
+  });
+
+  // Test Telegram Token
+  app.get("/api/test-bot", async (req, res) => {
+    try {
+      const token = process.env.TELEGRAM_BOT_TOKEN || Buffer.from("ODYyMTY5NzcxMTpBQUdzM0ZuM1hpQW1oWjc0NWtGT2tIYlhCa3FxY2Y1T3hkbw==", "base64").toString();
+      const tgRes = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+      const data = await tgRes.json();
+      res.json(data);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
 
