@@ -1,7 +1,17 @@
+version: '3.8'
+
 services:
+  app:
+    build: .
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    expose:
+      - "3000"
+
   caddy:
     image: caddy:2-alpine
-    container_name: astro_caddy
     restart: always
     ports:
       - "3000:80"
@@ -11,16 +21,6 @@ services:
       - caddy_config:/config
     depends_on:
       - app
-
-  app:
-    build: .
-    container_name: astro_app
-    restart: always
-    expose:
-      - "3000"
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
 
 volumes:
   caddy_data:

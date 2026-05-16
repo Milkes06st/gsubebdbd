@@ -1,7 +1,11 @@
+{
+    auto_https off
+}
+
 :80 {
     reverse_proxy app:3000
 }
 
-astrotest.duckdns.org {
+http://astrotest.duckdns.org {
     reverse_proxy app:3000
 }
