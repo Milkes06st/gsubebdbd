@@ -562,8 +562,8 @@ export default function App() {
         <div className="mt-8 mb-6 p-4 lg:p-5 rounded-2xl bg-[#1a1a1f] border border-white/5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-center">
           {/* Provider */}
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 lg:h-11 lg:w-11 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400 shrink-0">
-              <PlanetIcon className="h-5 w-5 lg:h-5 lg:w-5" />
+            <div className="text-blue-400 shrink-0 flex items-center justify-center">
+              <PlanetIcon className="h-6 w-6 lg:h-7 lg:w-7" />
             </div>
             <div className="min-w-0">
               <div className="text-[11px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">Провайдер</div>
@@ -573,8 +573,8 @@ export default function App() {
 
           {/* IP & Location */}
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 lg:h-11 lg:w-11 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400 shrink-0">
-              <MapPin className="h-5 w-5 lg:h-5 lg:w-5" />
+            <div className="text-blue-400 shrink-0 flex items-center justify-center">
+              <MapPin className="h-6 w-6 lg:h-7 lg:w-7" />
             </div>
             <div className="min-w-0">
               <div className="text-[11px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">IP / Локация</div>
@@ -587,8 +587,8 @@ export default function App() {
 
           {/* OS & Browser */}
           <div className="flex items-center gap-3 sm:col-span-2 lg:col-span-1">
-            <div className="h-10 w-10 lg:h-11 lg:w-11 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400 shrink-0">
-              <Laptop className="h-5 w-5 lg:h-5 lg:w-5" />
+            <div className="text-blue-400 shrink-0 flex items-center justify-center">
+              <Laptop className="h-6 w-6 lg:h-7 lg:w-7" />
             </div>
             <div className="min-w-0">
               <div className="text-[11px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">ОС и Браузер</div>
