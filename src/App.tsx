@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, RotateCcw, Share2, Activity, ArrowDown, ArrowUp, Globe2, MapPin } from "lucide-react";
+import { Play, RotateCcw, Share2, MapPin } from "lucide-react";
 import confetti from "canvas-confetti";
 import { fetchNetworkInfo, measurePing, measureDownloadSpeed, measureUploadSpeed, NetworkInfo } from "./lib/speedTest";
 import { cn } from "./lib/utils";
@@ -33,6 +33,33 @@ const AstroLogo = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const ChartSplineIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("lucide lucide-chart-spline", className)}>
+    <path d="M3 3v16a2 2 0 0 0 2 2h16"/>
+    <path d="M7 16c.5-2 1.5-7 4-7 2 0 2 3 4 3 2.5 0 4.5-5 5-7"/>
+  </svg>
+);
+
+const PlanetIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("lucide", className)}>
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+    <path d="M2 12h20"/>
+  </svg>
+);
+
+const ArchiveDownIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M3 4c0-1.1.9-2 2-2h14a2 2 0 0 1 2 2v3H3V4zm2 5h14v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9zm7 8.5l4-4h-3v-4h-2v4H8l4 4z"/>
+  </svg>
+);
+
+const ArchiveUpIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M3 4c0-1.1.9-2 2-2h14a2 2 0 0 1 2 2v3H3V4zm2 5h14v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9zm7-7.5l4 4h-3v4h-2v-4H8l4-4z"/> 
+  </svg>
+);
+
 export default function App() {
   const [phase, setPhase] = useState<TestPhase>("idle");
   const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
@@ -41,6 +68,7 @@ export default function App() {
   const [uploadMbps, setUploadMbps] = useState<number>(0);
   const [progress, setProgress] = useState<number>(0);
   const [isBoostMode, setIsBoostMode] = useState(false);
+  const [maxScale, setMaxScale] = useState<number>(100);
   const confettiCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -191,13 +219,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f0f13] text-slate-50 font-sans flex flex-col items-center p-4 sm:p-8 relative overflow-hidden">
-      {/* Background space effects */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[100px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[100px]" />
-      </div>
-
+    <div className="min-h-screen bg-neutral-800 text-slate-50 font-sans flex flex-col items-center p-4 sm:p-8 relative overflow-hidden">
       <div className="z-10 w-full flex flex-col items-center w-full">
         {/* Header */}
         <motion.div 
@@ -223,7 +245,7 @@ export default function App() {
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-2xl bg-[#1c1c21] rounded-3xl p-6 sm:p-10 shadow-2xl border border-white/5"
+        className="w-full max-w-2xl bg-neutral-900 rounded-3xl p-6 sm:p-10 shadow-2xl border border-white/5"
       >
         
         {/* Gauge Area */}
@@ -232,14 +254,35 @@ export default function App() {
             value={phase === "uploading" ? uploadMbps : downloadMbps} 
             phase={phase} 
             onStart={runTest}
+            maxScale={maxScale}
           />
+          
+          {/* Scale Selector */}
+          <div className="flex justify-center gap-2 mt-8 z-20 relative">
+            {[100, 250, 500, 1000].map((scale) => (
+              <button
+                key={scale}
+                onClick={() => setMaxScale(scale)}
+                disabled={phase !== "idle" && phase !== "done"}
+                className={cn(
+                  "px-4 py-1 text-xs sm:text-sm font-semibold rounded-full border transition-colors",
+                  maxScale === scale 
+                    ? "bg-blue-600 border-blue-500 text-white" 
+                    : "bg-neutral-800 border-white/10 text-slate-400 hover:text-white hover:bg-white/5",
+                  (phase !== "idle" && phase !== "done") && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {scale}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Network Info */}
-        <div className="mt-8 mb-6 p-4 rounded-2xl bg-[#26262c] flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="mt-8 mb-6 p-4 rounded-2xl bg-neutral-800 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-              <Globe2 className="h-5 w-5" />
+              <PlanetIcon className="h-5 w-5" />
             </div>
             <div>
               <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Провайдер</div>
@@ -257,19 +300,19 @@ export default function App() {
         {/* Results Table (Столбиком) */}
         <div className="grid grid-cols-3 gap-3">
           <ResultColumn 
-            icon={<ArrowDown className="w-5 h-5 text-blue-400" />}
+            icon={<ArchiveDownIcon className="w-5 h-5 text-blue-400" />}
             label="Загрузка"
             value={downloadMbps ? downloadMbps.toFixed(1) : "—"}
             isActive={phase === "downloading"}
           />
           <ResultColumn 
-            icon={<ArrowUp className="w-5 h-5 text-purple-400" />}
+            icon={<ArchiveUpIcon className="w-5 h-5 text-purple-400" />}
             label="Выгрузка"
             value={uploadMbps ? uploadMbps.toFixed(1) : "—"}
             isActive={phase === "uploading"}
           />
           <ResultColumn 
-            icon={<Activity className="w-5 h-5 text-emerald-400" />}
+            icon={<ChartSplineIcon className="w-5 h-5 text-emerald-400" />}
             label="Пинг"
             value={ping !== null ? ping.toString() : "—"}
             unit="мс"
@@ -325,7 +368,7 @@ function ResultColumn({ icon, label, value, unit = "Мбит/с", isActive }: { 
   );
 }
 
-function HalfCircleGauge({ value, phase, onStart }: { value: number; phase: TestPhase; onStart: () => void }) {
+function HalfCircleGauge({ value, phase, onStart, maxScale }: { value: number; phase: TestPhase; onStart: () => void; maxScale: number }) {
   const isTesting = phase === "downloading" || phase === "uploading";
   const displayValue = isTesting || phase === "done" ? value.toFixed(1) : "0.0";
   
@@ -345,14 +388,11 @@ function HalfCircleGauge({ value, phase, onStart }: { value: number; phase: Test
   const r = 130;
   const pathLength = Math.PI * r; // ~408.4
 
-  // Max value mapping (pseudo-log scale for visual representation)
-  // Let's assume max dial represents 300 Mbps for nice visual spread, but it can smoothly scale
-  const visualMax = value > 300 ? Math.ceil(value / 100) * 100 : 300;
-  const clampedVal = Math.max(0, Math.min(value, visualMax));
+  const clampedVal = Math.max(0, Math.min(value, maxScale));
   
   // Calculate offset (0 = empty, 1 = full)
   // We'll use a curve so small values still show movement
-  const progressRatio = Math.pow(clampedVal / visualMax, 0.6); 
+  const progressRatio = Math.pow(clampedVal / maxScale, 0.6); 
   const displayOffset = pathLength - (progressRatio * pathLength);
 
   // Position for the thumb (the "dot" on the edge of the line)
@@ -362,8 +402,8 @@ function HalfCircleGauge({ value, phase, onStart }: { value: number; phase: Test
   const thumbY = cy - r * Math.sin(angle);
 
   // Ticks calculation
-  const tickValues = [0, 20, 40, 60, 80, 100];
   const numTicks = 5;
+  const tickValues = Array.from({ length: numTicks + 1 }).map((_, i) => Math.round((maxScale / numTicks) * i));
 
   return (
     <div className="relative w-full max-w-[320px] pt-12 pb-4 flex flex-col items-center justify-center">
@@ -413,9 +453,23 @@ function HalfCircleGauge({ value, phase, onStart }: { value: number; phase: Test
             strokeWidth="18"
             strokeLinecap="round"
             strokeDasharray={pathLength}
-            initial={{ strokeDashoffset: pathLength }}
-            animate={{ strokeDashoffset: isTesting || phase === "done" ? displayOffset : pathLength }}
-            transition={{ type: "spring", stiffness: 30, damping: 15 }}
+            initial={{ strokeDashoffset: pathLength, filter: 'drop-shadow(0px 0px 0px rgba(0,0,0,0))' }}
+            animate={{ 
+              strokeDashoffset: isTesting || phase === "done" ? displayOffset : pathLength,
+              filter: isTesting 
+                ? [
+                    `drop-shadow(0px 0px 5px ${activeColor}80)`,
+                    `drop-shadow(0px 0px 20px ${activeColor})`,
+                    `drop-shadow(0px 0px 5px ${activeColor}80)`
+                  ] 
+                : phase === "done" 
+                  ? `drop-shadow(0px 0px 10px ${activeColor}80)`
+                  : 'drop-shadow(0px 0px 0px rgba(0,0,0,0))'
+            }}
+            transition={{ 
+              strokeDashoffset: { type: "spring", stiffness: 30, damping: 15 },
+              filter: isTesting ? { repeat: Infinity, duration: 1.5, ease: "easeInOut" } : { duration: 0.5 }
+            }}
           />
 
           {/* Thumb Circle */}
