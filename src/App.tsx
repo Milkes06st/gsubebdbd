@@ -406,7 +406,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-slate-50 font-sans flex flex-col items-center p-4 sm:p-8 relative overflow-hidden">
+    <div className="min-h-screen bg-black text-slate-50 font-sans flex flex-col items-center px-4 py-4 sm:py-6 relative overflow-x-hidden">
       {/* Settings Modal */}
       <AnimatePresence>
         {isSettingsOpen && (
@@ -415,14 +415,14 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
               onClick={() => setIsSettingsOpen(false)}
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-[#141418] border border-white/10 p-6 rounded-3xl w-full max-w-sm shadow-2xl z-10 flex flex-col gap-6"
+              className="relative bg-[#111115] border border-white/10 p-6 rounded-3xl w-full max-w-sm shadow-2xl z-10 flex flex-col gap-6"
             >
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-500/20 rounded-xl text-blue-400">
@@ -466,7 +466,7 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Шкала (Мбит/с)</label>
+                  <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Шкала спидометра</label>
                   <div className="grid grid-cols-4 gap-2">
                     {[100, 250, 500, 1000].map((scale) => (
                       <button
@@ -499,60 +499,54 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className="z-10 w-full flex flex-col items-center w-full">
+      <div className="z-10 w-full max-w-xl flex flex-col items-center">
         {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl py-6 flex items-center justify-between"
+          className="w-full py-3 sm:py-5 flex items-center justify-between"
         >
-        <div className="text-3xl lg:text-4xl font-black tracking-tight flex items-center gap-2.5">
-          <AstroLogo className="h-10 w-10 lg:h-11 lg:w-11 text-blue-500" />
-          <span>Astro<span className="text-blue-500">test</span></span>
-        </div>
-        <button 
-          onClick={() => setIsSettingsOpen(true)}
-          className="flex items-center justify-center p-2.5 text-slate-400 bg-slate-800/50 hover:bg-slate-700 hover:text-white rounded-xl transition-colors"
-          aria-label="Настройки"
-        >
-          <Settings className="w-5 h-5 lg:w-6 lg:h-6" />
-        </button>
-      </motion.div>
-
-      {/* Floating Toast Notification */}
-      <AnimatePresence>
-        {copiedToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-6 z-50 px-5 py-3 bg-emerald-600 text-white text-sm font-semibold rounded-2xl shadow-2xl flex items-center gap-2.5 border border-emerald-400/40"
+          <div className="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2.5">
+            <AstroLogo className="h-6 w-6 sm:h-7 sm:w-7 text-blue-500" />
+            <span>Astro<span className="text-blue-500">test</span></span>
+          </div>
+          <button 
+            onClick={() => setIsSettingsOpen(true)}
+            className="p-1.5 text-slate-400 hover:text-white transition-colors"
+            aria-label="Настройки"
           >
-            <Check className="w-4 h-4 text-emerald-100" />
-            <span>Ссылка на результат скопирована!</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <Settings className="w-5 h-5 text-slate-400 hover:text-slate-200" />
+          </button>
+        </motion.div>
 
-      {/* Main Container */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl bg-[#141418] rounded-3xl p-6 sm:p-10 lg:p-12 shadow-2xl border border-white/5"
-      >
+        {/* Floating Toast Notification */}
+        <AnimatePresence>
+          {copiedToast && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-6 z-50 px-5 py-3 bg-emerald-600 text-white text-sm font-semibold rounded-2xl shadow-2xl flex items-center gap-2.5 border border-emerald-400/40"
+            >
+              <Check className="w-4 h-4 text-emerald-100" />
+              <span>Ссылка на результат скопирована!</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Shared View Banner */}
         {isSharedView && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 lg:p-5 rounded-2xl bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border border-blue-500/30 flex items-center gap-3.5 text-left"
+            className="w-full mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border border-blue-500/30 flex items-center gap-3 text-left"
           >
-            <div className="h-11 w-11 lg:h-12 lg:w-12 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
-              <AstroLogo className="h-6 w-6 text-blue-400" />
+            <div className="h-9 w-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+              <AstroLogo className="h-5 w-5 text-blue-400" />
             </div>
             <div>
-              <div className="text-xs lg:text-sm text-blue-400 font-bold uppercase tracking-wider">Сохранённый замер</div>
-              <div className="text-sm lg:text-base text-slate-200 font-medium">
+              <div className="text-[11px] text-blue-400 font-bold uppercase tracking-wider">Сохранённый замер</div>
+              <div className="text-sm text-slate-200 font-medium">
                 {sharedMeta?.date ? `Тест проведён ${sharedMeta.date}` : "Результаты теста скорости"}
               </div>
             </div>
@@ -560,7 +554,7 @@ export default function App() {
         )}
         
         {/* Gauge Area */}
-        <div className="flex flex-col items-center justify-center pt-2 pb-4 relative">
+        <div className="w-full flex flex-col items-center justify-center pt-2 pb-2 relative">
           <HalfCircleGauge 
             value={phase === "uploading" ? getDisplayValue(uploadMbps) : getDisplayValue(downloadMbps)} 
             phase={phase} 
@@ -570,68 +564,71 @@ export default function App() {
           />
         </div>
 
-        {/* Network & System Info */}
-        <div className="mt-8 mb-6 p-4 lg:p-5 rounded-2xl bg-[#1a1a1f] border border-white/5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-center">
-          {/* Provider */}
-          <div className="flex items-center gap-3">
-            <div className="text-blue-400 shrink-0 flex items-center justify-center">
-              <PlanetIcon className="h-6 w-6 lg:h-7 lg:w-7" />
+        {/* Network & System Info Card */}
+        <div className="w-full mt-4 mb-5 p-4 sm:p-5 rounded-2xl bg-[#0c0c10] border border-white/5 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+          {/* Left Column: Provider + OS & Browser */}
+          <div className="flex flex-col gap-3 min-w-0">
+            {/* Provider */}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="text-blue-500 shrink-0">
+                <PlanetIcon className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">ПРОВАЙДЕР</div>
+                <div className="font-bold text-xs sm:text-sm text-slate-100 truncate">{networkInfo?.isp || "Поиск..."}</div>
+              </div>
             </div>
-            <div className="min-w-0">
-              <div className="text-[11px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">Провайдер</div>
-              <div className="font-semibold text-sm lg:text-base text-slate-100 truncate">{networkInfo?.isp || "Поиск..."}</div>
+
+            {/* OS & Browser */}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="text-blue-500 shrink-0">
+                <Laptop className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">ОС И БРАУЗЕР</div>
+                <div className="font-bold text-xs sm:text-sm text-slate-100 truncate">
+                  {clientSystem.os} <span className="text-slate-500 mx-1">•</span> {clientSystem.browser}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* IP & Location */}
-          <div className="flex items-center gap-3">
-            <div className="text-blue-400 shrink-0 flex items-center justify-center">
-              <MapPin className="h-6 w-6 lg:h-7 lg:w-7" />
+          {/* Right Column: IP & Location */}
+          <div className="flex items-center gap-2.5 min-w-0 sm:justify-start sm:h-full sm:pt-1">
+            <div className="text-blue-500 shrink-0">
+              <MapPin className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-[11px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">IP / Локация</div>
-              <div className="font-medium text-slate-200 text-sm lg:text-base truncate">
+              <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">IP / ЛОКАЦИЯ</div>
+              <div className="font-bold text-xs sm:text-sm text-slate-100 truncate">
                 {networkInfo?.ip || "..."}
                 {networkInfo?.city ? <span className="text-slate-400 font-normal"> • {networkInfo.city}</span> : ""}
               </div>
             </div>
           </div>
-
-          {/* OS & Browser */}
-          <div className="flex items-center gap-3 sm:col-span-2 lg:col-span-1">
-            <div className="text-blue-400 shrink-0 flex items-center justify-center">
-              <Laptop className="h-6 w-6 lg:h-7 lg:w-7" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">ОС и Браузер</div>
-              <div className="font-semibold text-sm lg:text-base text-slate-100 truncate">
-                {clientSystem.os} <span className="text-slate-500 mx-1">•</span> {clientSystem.browser}
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Results Table (Столбиком) */}
-        <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+        {/* Results Table (3 Columns) */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full">
           <ResultColumn 
-            icon={<ArchiveDownIcon className="w-5 h-5 lg:w-6 lg:h-6 text-blue-400" />}
-            label="Загрузка"
+            icon={<ArchiveDownIcon className="w-4 h-4 text-blue-500" />}
+            label="ЗАГРУЗКА"
             value={downloadMbps ? (unit === "KB/s" ? Math.round(getDisplayValue(downloadMbps)).toLocaleString("ru-RU") : getDisplayValue(downloadMbps).toFixed(1)) : "—"}
-            unit={getUnitLabel(unit)}
+            unit={getUnitLabel(unit).toUpperCase()}
             isActive={phase === "downloading"}
           />
           <ResultColumn 
-            icon={<ArchiveUpIcon className="w-5 h-5 lg:w-6 lg:h-6 text-blue-400" />}
-            label="Выгрузка"
+            icon={<ArchiveUpIcon className="w-4 h-4 text-blue-500" />}
+            label="ВЫГРУЗКА"
             value={uploadMbps ? (unit === "KB/s" ? Math.round(getDisplayValue(uploadMbps)).toLocaleString("ru-RU") : getDisplayValue(uploadMbps).toFixed(1)) : "—"}
-            unit={getUnitLabel(unit)}
+            unit={getUnitLabel(unit).toUpperCase()}
             isActive={phase === "uploading"}
           />
           <ResultColumn 
-            icon={<ChartSplineIcon className="w-5 h-5 lg:w-6 lg:h-6 text-blue-400" />}
-            label="Пинг"
+            icon={<ChartSplineIcon className="w-4 h-4 text-blue-500" />}
+            label="ПИНГ"
             value={ping !== null ? ping.toString() : "—"}
-            unit="мс"
+            unit="МС"
             isActive={phase === "pinging"}
           />
         </div>
@@ -641,15 +638,14 @@ export default function App() {
           {phase === "done" && (
             <motion.div
               initial={{ height: 0, opacity: 0, marginTop: 0 }}
-              animate={{ height: "auto", opacity: 1, marginTop: 24 }}
+              animate={{ height: "auto", opacity: 1, marginTop: 20 }}
               className="overflow-hidden w-full"
             >
               {isSharedView ? (
-                /* В режиме где делятся ссылкой — только кнопка Поделиться, без кнопки пройти ещё раз */
                 <button
                   onClick={handleOpenShare}
                   className={cn(
-                    "w-full rounded-xl lg:rounded-2xl py-3.5 lg:py-4 font-bold text-base lg:text-lg flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]",
+                    "w-full rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]",
                     copiedToast
                       ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/25"
                       : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25"
@@ -668,12 +664,11 @@ export default function App() {
                   )}
                 </button>
               ) : (
-                /* Обычный режим после завершения теста */
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4 w-full">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                   <button
                     onClick={handleOpenShare}
                     className={cn(
-                      "w-full rounded-xl lg:rounded-2xl py-3.5 lg:py-4 font-bold text-base lg:text-lg flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]",
+                      "w-full rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]",
                       copiedToast
                         ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/25"
                         : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25"
@@ -694,7 +689,7 @@ export default function App() {
 
                   <button
                     onClick={runTest}
-                    className="w-full bg-[#1e1e24] hover:bg-[#282830] text-white rounded-xl lg:rounded-2xl py-3.5 lg:py-4 font-bold text-base lg:text-lg flex items-center justify-center gap-2.5 transition-colors border border-white/5 active:scale-[0.99]"
+                    className="w-full bg-[#16161c] hover:bg-[#202028] text-white rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-colors border border-white/5 active:scale-[0.99]"
                   >
                     <RotateCcw className="h-5 w-5" />
                     Заново
@@ -705,10 +700,9 @@ export default function App() {
           )}
         </AnimatePresence>
 
-      </motion.div>
-      <div className="mt-8 text-[6px] opacity-10 text-center max-w-sm px-4 relative z-10 font-medium cursor-default select-none pointer-events-none">
-         Используя сервис, вы соглашаетесь с базовой статистикой.
-      </div>
+        <div className="mt-8 text-[9px] text-slate-800 text-center max-w-sm px-4 relative z-10 font-medium cursor-default select-none pointer-events-none">
+          Используя сервис, вы соглашаетесь с базовой статистикой.
+        </div>
       </div>
     </div>
   );
@@ -719,17 +713,17 @@ export default function App() {
 function ResultColumn({ icon, label, value, unit = "Мбит/с", isActive }: { icon: React.ReactNode, label: string, value: string, unit?: string, isActive: boolean }) {
   return (
     <div className={cn(
-      "flex flex-col items-center justify-center p-4 lg:p-6 rounded-2xl transition-all duration-300",
+      "flex flex-col items-center justify-center py-3 px-2 rounded-2xl transition-all duration-300",
       isActive ? "bg-white/5 border border-white/10" : "bg-transparent"
     )}>
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-1.5 mb-1.5 justify-center">
         {icon}
-        <span className="text-xs sm:text-sm lg:text-base font-semibold text-slate-400 uppercase tracking-wider">{label}</span>
+        <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest">{label}</span>
       </div>
-      <div className="flex items-baseline gap-1">
-        <span className="text-2xl sm:text-3xl lg:text-4xl font-bold font-mono">{value}</span>
+      <div className="flex items-baseline justify-center">
+        <span className="text-xl sm:text-2xl lg:text-3xl font-bold font-mono text-white tracking-tight">{value}</span>
       </div>
-      <span className="text-xs lg:text-sm text-slate-500 font-medium mt-1 uppercase">{unit}</span>
+      <span className="text-[9px] sm:text-[10px] text-slate-500 font-semibold mt-0.5 uppercase tracking-wider">{unit}</span>
     </div>
   );
 }
