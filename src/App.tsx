@@ -609,14 +609,14 @@ export default function App() {
             isActive={phase === "downloading"}
           />
           <ResultColumn 
-            icon={<ArchiveUpIcon className="w-5 h-5 lg:w-6 lg:h-6 text-purple-400" />}
+            icon={<ArchiveUpIcon className="w-5 h-5 lg:w-6 lg:h-6 text-blue-400" />}
             label="Выгрузка"
             value={uploadMbps ? (unit === "KB/s" ? Math.round(getDisplayValue(uploadMbps)).toLocaleString("ru-RU") : getDisplayValue(uploadMbps).toFixed(1)) : "—"}
             unit={getUnitLabel(unit)}
             isActive={phase === "uploading"}
           />
           <ResultColumn 
-            icon={<ChartSplineIcon className="w-5 h-5 lg:w-6 lg:h-6 text-emerald-400" />}
+            icon={<ChartSplineIcon className="w-5 h-5 lg:w-6 lg:h-6 text-blue-400" />}
             label="Пинг"
             value={ping !== null ? ping.toString() : "—"}
             unit="мс"
@@ -736,7 +736,7 @@ function HalfCircleGauge({ value, phase, onStart, maxScale, unitLabel }: { value
   if (phase === "done") phaseTitle = "РЕЗУЛЬТАТЫ";
 
   // Color mapping
-  const activeColor = phase === "uploading" ? "#a855f7" : "#3b82f6"; // purple / blue
+  const activeColor = "#3b82f6"; // Unified Astrotest electric blue
   
   // SVG Metrics for 180 arc
   const cx = 160;
