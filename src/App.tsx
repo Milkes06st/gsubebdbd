@@ -422,24 +422,26 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-[#111115] border border-white/10 p-6 rounded-3xl w-full max-w-sm shadow-2xl z-10 flex flex-col gap-6"
+              className="relative bg-[#0f121a] border border-white/5 p-6 sm:p-7 rounded-[26px] w-full max-w-[360px] sm:max-w-md shadow-2xl z-10 flex flex-col gap-6"
             >
+              {/* Header: Blue Gear + Настройки */}
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-500/20 rounded-xl text-blue-400">
-                  <Settings className="w-5 h-5" />
-                </div>
-                <h2 className="text-xl font-bold">Настройки</h2>
+                <Settings className="w-6 h-6 text-blue-500 shrink-0" />
+                <h2 className="text-2xl font-bold text-white tracking-tight">Настройки</h2>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-5">
+                {/* Единицы измерения */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Единицы измерения</label>
-                  <div className="grid grid-cols-3 p-1 bg-[#1a1a1f] rounded-xl border border-white/5 gap-1">
+                  <label className="block text-xs font-semibold text-slate-400 mb-2.5 uppercase tracking-wider">Единицы измерения</label>
+                  <div className="grid grid-cols-3 p-1.5 bg-[#161922] rounded-2xl border border-white/5 gap-1">
                     <button
                       onClick={() => setUnit("Mbps")}
                       className={cn(
-                        "py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors text-center",
-                        unit === "Mbps" ? "bg-slate-700 text-white shadow" : "text-slate-400 hover:text-white"
+                        "py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all text-center",
+                        unit === "Mbps" 
+                          ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" 
+                          : "text-slate-400 hover:text-white font-medium"
                       )}
                     >
                       Мбит/с
@@ -447,8 +449,10 @@ export default function App() {
                     <button
                       onClick={() => setUnit("MB/s")}
                       className={cn(
-                        "py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors text-center",
-                        unit === "MB/s" ? "bg-slate-700 text-white shadow" : "text-slate-400 hover:text-white"
+                        "py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all text-center",
+                        unit === "MB/s" 
+                          ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" 
+                          : "text-slate-400 hover:text-white font-medium"
                       )}
                     >
                       МБ/с
@@ -456,8 +460,10 @@ export default function App() {
                     <button
                       onClick={() => setUnit("KB/s")}
                       className={cn(
-                        "py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors text-center",
-                        unit === "KB/s" ? "bg-slate-700 text-white shadow" : "text-slate-400 hover:text-white"
+                        "py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all text-center",
+                        unit === "KB/s" 
+                          ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" 
+                          : "text-slate-400 hover:text-white font-medium"
                       )}
                     >
                       КБ/с
@@ -465,19 +471,20 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Шкала спидометра */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Шкала спидометра</label>
-                  <div className="grid grid-cols-4 gap-2">
+                  <label className="block text-xs font-semibold text-slate-400 mb-2.5 uppercase tracking-wider">Шкала спидометра</label>
+                  <div className="grid grid-cols-4 gap-2 sm:gap-2.5">
                     {[100, 250, 500, 1000].map((scale) => (
                       <button
                         key={scale}
                         onClick={() => setMaxScale(scale)}
                         disabled={phase !== "idle" && phase !== "done"}
                         className={cn(
-                          "py-2 text-xs font-semibold rounded-lg border transition-colors",
+                          "py-3 text-xs sm:text-sm font-bold rounded-xl border transition-all text-center",
                           maxScale === scale 
-                            ? "bg-blue-600 border-blue-500 text-white" 
-                            : "bg-[#1a1a1f] border-white/10 text-slate-400 hover:text-white hover:bg-white/5",
+                            ? "bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-500/20" 
+                            : "bg-[#161922] border-white/5 text-slate-300 hover:text-white hover:bg-[#1f2330] font-medium",
                           (phase !== "idle" && phase !== "done") && "opacity-50 cursor-not-allowed"
                         )}
                       >
@@ -488,9 +495,10 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Кнопка Готово */}
               <button 
                 onClick={() => setIsSettingsOpen(false)}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors mt-2"
+                className="w-full py-3.5 sm:py-4 bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-bold rounded-2xl transition-all shadow-lg shadow-blue-500/25 mt-2 text-base"
               >
                 Готово
               </button>
@@ -539,9 +547,9 @@ export default function App() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full mb-6 p-4 rounded-[20px] bg-black border border-blue-500/50 flex items-center gap-4 text-left shadow-lg shadow-black/50"
+            className="w-full mb-6 p-4 rounded-[20px] bg-[#090b10] border border-white/5 flex items-center gap-4 text-left shadow-lg shadow-black/50"
           >
-            <div className="h-12 w-12 rounded-2xl bg-black text-blue-500 flex items-center justify-center shrink-0 border border-blue-500/50">
+            <div className="h-12 w-12 rounded-2xl bg-black text-blue-500 flex items-center justify-center shrink-0 border border-white/5">
               <AstroLogo className="h-6 w-6 text-blue-500" />
             </div>
             <div className="min-w-0">
