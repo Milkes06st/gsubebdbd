@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, RotateCcw, Settings, MapPin, Share2, Check, Sparkles } from "lucide-react";
+import { Play, RotateCcw, Settings, MapPin, Share2, Check } from "lucide-react";
 import { fetchNetworkInfo, measurePing, measureDownloadSpeed, measureUploadSpeed, NetworkInfo } from "./lib/speedTest";
 import { cn } from "./lib/utils";
 
@@ -410,18 +410,18 @@ export default function App() {
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-2xl py-6 flex items-center justify-between"
+          className="w-full max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl py-6 flex items-center justify-between"
         >
-        <div className="text-3xl font-black tracking-tight flex items-center gap-2">
-          <AstroLogo className="h-10 w-10 text-blue-500" />
+        <div className="text-3xl lg:text-4xl font-black tracking-tight flex items-center gap-2.5">
+          <AstroLogo className="h-10 w-10 lg:h-11 lg:w-11 text-blue-500" />
           <span>Astro<span className="text-blue-500">test</span></span>
         </div>
         <button 
           onClick={() => setIsSettingsOpen(true)}
-          className="flex items-center justify-center p-2 text-slate-400 bg-slate-800/50 hover:bg-slate-700 hover:text-white rounded-xl transition-colors"
+          className="flex items-center justify-center p-2.5 text-slate-400 bg-slate-800/50 hover:bg-slate-700 hover:text-white rounded-xl transition-colors"
           aria-label="Настройки"
         >
-          <Settings className="w-5 h-5" />
+          <Settings className="w-5 h-5 lg:w-6 lg:h-6" />
         </button>
       </motion.div>
 
@@ -444,33 +444,24 @@ export default function App() {
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-2xl bg-[#141418] rounded-3xl p-6 sm:p-10 shadow-2xl border border-white/5"
+        className="w-full max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl bg-[#141418] rounded-3xl p-6 sm:p-10 lg:p-12 shadow-2xl border border-white/5"
       >
         {/* Shared View Banner */}
         {isSharedView && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border border-blue-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left"
+            className="mb-6 p-4 lg:p-5 rounded-2xl bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border border-blue-500/30 flex items-center gap-3.5 text-left"
           >
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
-                <Sparkles className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs text-blue-400 font-bold uppercase tracking-wider">Сохранённый замер</div>
-                <div className="text-sm text-slate-200 font-medium">
-                  {sharedMeta?.date ? `Тест проведён ${sharedMeta.date}` : "Результаты теста скорости"}
-                </div>
+            <div className="h-11 w-11 lg:h-12 lg:w-12 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+              <AstroLogo className="h-6 w-6 text-blue-400" />
+            </div>
+            <div>
+              <div className="text-xs lg:text-sm text-blue-400 font-bold uppercase tracking-wider">Сохранённый замер</div>
+              <div className="text-sm lg:text-base text-slate-200 font-medium">
+                {sharedMeta?.date ? `Тест проведён ${sharedMeta.date}` : "Результаты теста скорости"}
               </div>
             </div>
-            <button
-              onClick={startFreshTest}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shrink-0 shadow-lg shadow-blue-500/20"
-            >
-              <Play className="w-3.5 h-3.5 fill-current" />
-              Пройти свой тест
-            </button>
           </motion.div>
         )}
         
@@ -486,42 +477,42 @@ export default function App() {
         </div>
 
         {/* Network Info */}
-        <div className="mt-8 mb-6 p-4 rounded-2xl bg-[#1a1a1f] flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="mt-8 mb-6 p-4 lg:p-5 rounded-2xl bg-[#1a1a1f] flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-              <PlanetIcon className="h-5 w-5" />
+            <div className="h-10 w-10 lg:h-12 lg:w-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+              <PlanetIcon className="h-5 w-5 lg:h-6 lg:w-6" />
             </div>
             <div>
-              <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Провайдер</div>
-              <div className="font-semibold">{networkInfo?.isp || "Поиск..."}</div>
+              <div className="text-xs lg:text-sm text-slate-400 uppercase tracking-wider font-semibold">Провайдер</div>
+              <div className="font-semibold text-sm lg:text-base">{networkInfo?.isp || "Поиск..."}</div>
             </div>
           </div>
           <div className="flex flex-col sm:items-end text-center sm:text-right">
-            <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">IP / Локация</div>
-            <div className="font-medium text-slate-200">
+            <div className="text-xs lg:text-sm text-slate-400 uppercase tracking-wider font-semibold">IP / Локация</div>
+            <div className="font-medium text-slate-200 text-sm lg:text-base">
               {networkInfo?.ip || "..."} <span className="text-slate-500 mx-1">•</span> {networkInfo ? `${networkInfo.city}` : "..."}
             </div>
           </div>
         </div>
 
         {/* Results Table (Столбиком) */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           <ResultColumn 
-            icon={<ArchiveDownIcon className="w-5 h-5 text-blue-400" />}
+            icon={<ArchiveDownIcon className="w-5 h-5 lg:w-6 lg:h-6 text-blue-400" />}
             label="Загрузка"
             value={downloadMbps ? getDisplayValue(downloadMbps).toFixed(1) : "—"}
             unit={unit === "MB/s" ? "МБ/с" : "Мбит/с"}
             isActive={phase === "downloading"}
           />
           <ResultColumn 
-            icon={<ArchiveUpIcon className="w-5 h-5 text-purple-400" />}
+            icon={<ArchiveUpIcon className="w-5 h-5 lg:w-6 lg:h-6 text-purple-400" />}
             label="Выгрузка"
             value={uploadMbps ? getDisplayValue(uploadMbps).toFixed(1) : "—"}
             unit={unit === "MB/s" ? "МБ/с" : "Мбит/с"}
             isActive={phase === "uploading"}
           />
           <ResultColumn 
-            icon={<ChartSplineIcon className="w-5 h-5 text-emerald-400" />}
+            icon={<ChartSplineIcon className="w-5 h-5 lg:w-6 lg:h-6 text-emerald-400" />}
             label="Пинг"
             value={ping !== null ? ping.toString() : "—"}
             unit="мс"
@@ -529,19 +520,20 @@ export default function App() {
           />
         </div>
 
-        {/* Action Buttons: Share & Restart */}
+        {/* Action Buttons */}
         <AnimatePresence>
           {phase === "done" && (
             <motion.div
               initial={{ height: 0, opacity: 0, marginTop: 0 }}
               animate={{ height: "auto", opacity: 1, marginTop: 24 }}
-              className="overflow-hidden"
+              className="overflow-hidden w-full"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+              {isSharedView ? (
+                /* В режиме где делятся ссылкой — только кнопка Поделиться, без кнопки пройти ещё раз */
                 <button
                   onClick={handleOpenShare}
                   className={cn(
-                    "w-full rounded-xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]",
+                    "w-full rounded-xl lg:rounded-2xl py-3.5 lg:py-4 font-bold text-base lg:text-lg flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]",
                     copiedToast
                       ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/25"
                       : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25"
@@ -559,15 +551,40 @@ export default function App() {
                     </>
                   )}
                 </button>
+              ) : (
+                /* Обычный режим после завершения теста */
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4 w-full">
+                  <button
+                    onClick={handleOpenShare}
+                    className={cn(
+                      "w-full rounded-xl lg:rounded-2xl py-3.5 lg:py-4 font-bold text-base lg:text-lg flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]",
+                      copiedToast
+                        ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/25"
+                        : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25"
+                    )}
+                  >
+                    {copiedToast ? (
+                      <>
+                        <Check className="h-5 w-5 text-emerald-200" />
+                        Ссылка скопирована!
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="h-5 w-5" />
+                        Поделиться
+                      </>
+                    )}
+                  </button>
 
-                <button
-                  onClick={isSharedView ? startFreshTest : runTest}
-                  className="w-full bg-[#1e1e24] hover:bg-[#282830] text-white rounded-xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-colors border border-white/5 active:scale-[0.99]"
-                >
-                  <RotateCcw className="h-5 w-5" />
-                  {isSharedView ? "Пройти свой тест" : "Заново"}
-                </button>
-              </div>
+                  <button
+                    onClick={runTest}
+                    className="w-full bg-[#1e1e24] hover:bg-[#282830] text-white rounded-xl lg:rounded-2xl py-3.5 lg:py-4 font-bold text-base lg:text-lg flex items-center justify-center gap-2.5 transition-colors border border-white/5 active:scale-[0.99]"
+                  >
+                    <RotateCcw className="h-5 w-5" />
+                    Заново
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -586,17 +603,17 @@ export default function App() {
 function ResultColumn({ icon, label, value, unit = "Мбит/с", isActive }: { icon: React.ReactNode, label: string, value: string, unit?: string, isActive: boolean }) {
   return (
     <div className={cn(
-      "flex flex-col items-center justify-center p-4 rounded-2xl transition-all duration-300",
+      "flex flex-col items-center justify-center p-4 lg:p-6 rounded-2xl transition-all duration-300",
       isActive ? "bg-white/5 border border-white/10" : "bg-transparent"
     )}>
       <div className="flex items-center gap-2 mb-2">
         {icon}
-        <span className="text-xs sm:text-sm font-semibold text-slate-400 uppercase tracking-wider">{label}</span>
+        <span className="text-xs sm:text-sm lg:text-base font-semibold text-slate-400 uppercase tracking-wider">{label}</span>
       </div>
       <div className="flex items-baseline gap-1">
-        <span className="text-2xl sm:text-3xl font-bold font-mono">{value}</span>
+        <span className="text-2xl sm:text-3xl lg:text-4xl font-bold font-mono">{value}</span>
       </div>
-      <span className="text-xs text-slate-500 font-medium mt-1 uppercase">{unit}</span>
+      <span className="text-xs lg:text-sm text-slate-500 font-medium mt-1 uppercase">{unit}</span>
     </div>
   );
 }
@@ -640,12 +657,12 @@ function HalfCircleGauge({ value, phase, onStart, maxScale, unitLabel }: { value
   const formattedTickValues = tickValues.map(v => Number.isInteger(v) ? v.toString() : v.toFixed(1));
 
   return (
-    <div className="relative w-full max-w-[320px] pt-12 pb-4 flex flex-col items-center justify-center">
-      <div className="absolute top-0 w-full text-center text-sm font-bold tracking-widest text-slate-400 z-10 transition-colors">
+    <div className="relative w-full max-w-[320px] sm:max-w-[380px] lg:max-w-[460px] pt-12 lg:pt-16 pb-4 flex flex-col items-center justify-center">
+      <div className="absolute top-0 w-full text-center text-sm lg:text-base font-bold tracking-widest text-slate-400 z-10 transition-colors">
         {phaseTitle}
       </div>
 
-      <div className="relative w-full max-w-[280px] sm:max-w-[320px] aspect-[2/1.2] overflow-visible">
+      <div className="relative w-full max-w-[280px] sm:max-w-[340px] lg:max-w-[420px] aspect-[2/1.2] overflow-visible">
         <svg fill="none" viewBox="0 0 320 180" className="w-full h-full overflow-visible">
           {/* Background Track */}
           <path
@@ -716,10 +733,10 @@ function HalfCircleGauge({ value, phase, onStart, maxScale, unitLabel }: { value
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={onStart}
-                className="pointer-events-auto bg-blue-600 hover:bg-blue-500 text-white rounded-full w-24 h-24 flex flex-col items-center justify-center shadow-[0_0_30px_rgba(37,99,235,0.4)] transition-all"
+                className="pointer-events-auto bg-blue-600 hover:bg-blue-500 text-white rounded-full w-24 h-24 lg:w-28 lg:h-28 flex flex-col items-center justify-center shadow-[0_0_30px_rgba(37,99,235,0.4)] transition-all"
               >
-                <Play className="w-8 h-8 ml-1 mb-1 fill-white" />
-                <span className="text-[10px] font-bold tracking-widest">СТАРТ</span>
+                <Play className="w-8 h-8 lg:w-10 lg:h-10 ml-1 mb-1 fill-white" />
+                <span className="text-[10px] lg:text-xs font-bold tracking-widest">СТАРТ</span>
               </motion.button>
             ) : (
               <motion.div
@@ -729,11 +746,11 @@ function HalfCircleGauge({ value, phase, onStart, maxScale, unitLabel }: { value
                 className="flex flex-col items-center"
               >
                 <div className="flex items-baseline gap-1">
-                  <span style={{ color: activeColor }} className="text-5xl sm:text-6xl font-black font-mono tracking-tighter transition-colors">
+                  <span style={{ color: activeColor }} className="text-5xl sm:text-6xl lg:text-7xl font-black font-mono tracking-tighter transition-colors">
                     {displayValue}
                   </span>
                 </div>
-                <span className="text-base sm:text-lg font-medium text-slate-500 mt-0 sm:mt-1 uppercase tracking-widest">{unitLabel}</span>
+                <span className="text-base sm:text-lg lg:text-xl font-medium text-slate-500 mt-0 sm:mt-1 uppercase tracking-widest">{unitLabel}</span>
               </motion.div>
             )}
           </AnimatePresence>
