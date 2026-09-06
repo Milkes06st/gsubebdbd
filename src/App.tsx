@@ -539,14 +539,14 @@ export default function App() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border border-blue-500/30 flex items-center gap-3 text-left"
+            className="w-full mb-6 p-4 rounded-[20px] bg-[#0c111a] border border-blue-500/20 flex items-center gap-4 text-left shadow-lg shadow-black/40"
           >
-            <div className="h-9 w-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
-              <AstroLogo className="h-5 w-5 text-blue-400" />
+            <div className="h-12 w-12 rounded-2xl bg-[#070b12] text-blue-500 flex items-center justify-center shrink-0 border border-blue-500/15">
+              <AstroLogo className="h-6 w-6 text-blue-500" />
             </div>
-            <div>
-              <div className="text-[11px] text-blue-400 font-bold uppercase tracking-wider">Сохранённый замер</div>
-              <div className="text-sm text-slate-200 font-medium">
+            <div className="min-w-0">
+              <div className="text-xs text-blue-500 font-bold uppercase tracking-wider">СОХРАНЁННЫЙ ЗАМЕР</div>
+              <div className="text-sm sm:text-base text-white font-medium mt-0.5 truncate">
                 {sharedMeta?.date ? `Тест проведён ${sharedMeta.date}` : "Результаты теста скорости"}
               </div>
             </div>
@@ -565,43 +565,40 @@ export default function App() {
         </div>
 
         {/* Network & System Info Card */}
-        <div className="w-full mt-4 mb-5 p-4 sm:p-5 rounded-2xl bg-[#0c0c10] border border-white/5 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-          {/* Left Column: Provider + OS & Browser */}
-          <div className="flex flex-col gap-3 min-w-0">
-            {/* Provider */}
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="text-blue-500 shrink-0">
-                <PlanetIcon className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">ПРОВАЙДЕР</div>
-                <div className="font-bold text-xs sm:text-sm text-slate-100 truncate">{networkInfo?.isp || "Поиск..."}</div>
-              </div>
+        <div className="w-full mt-3 mb-4 p-5 rounded-[22px] bg-[#090b10] border border-white/5 flex flex-col gap-4 shadow-xl">
+          {/* Provider */}
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="text-blue-500 shrink-0">
+              <PlanetIcon className="h-5 w-5" />
             </div>
+            <div className="min-w-0">
+              <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">ПРОВАЙДЕР</div>
+              <div className="font-bold text-xs sm:text-sm text-white tracking-wide truncate">{networkInfo?.isp || "Поиск..."}</div>
+            </div>
+          </div>
 
-            {/* OS & Browser */}
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="text-blue-500 shrink-0">
-                <Laptop className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">ОС И БРАУЗЕР</div>
-                <div className="font-bold text-xs sm:text-sm text-slate-100 truncate">
-                  {clientSystem.os} <span className="text-slate-500 mx-1">•</span> {clientSystem.browser}
-                </div>
+          {/* OS & Browser */}
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="text-blue-500 shrink-0">
+              <Laptop className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">ОС И БРАУЗЕР</div>
+              <div className="font-bold text-xs sm:text-sm text-white truncate">
+                {clientSystem.os} <span className="text-slate-500 mx-1">•</span> {clientSystem.browser}
               </div>
             </div>
           </div>
 
-          {/* Right Column: IP & Location */}
-          <div className="flex items-center gap-2.5 min-w-0 sm:justify-start sm:h-full sm:pt-1">
+          {/* IP & Location */}
+          <div className="flex items-center gap-3.5 min-w-0">
             <div className="text-blue-500 shrink-0">
               <MapPin className="h-5 w-5" />
             </div>
             <div className="min-w-0">
               <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">IP / ЛОКАЦИЯ</div>
-              <div className="font-bold text-xs sm:text-sm text-slate-100 truncate">
-                {networkInfo?.ip || "..."}
+              <div className="font-bold text-xs sm:text-sm text-white truncate">
+                {networkInfo?.ip && networkInfo.ip !== "—" ? networkInfo.ip : "—"}
                 {networkInfo?.city ? <span className="text-slate-400 font-normal"> • {networkInfo.city}</span> : ""}
               </div>
             </div>
@@ -609,26 +606,23 @@ export default function App() {
         </div>
 
         {/* Results Table (3 Columns) */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full mt-2">
           <ResultColumn 
             icon={<ArchiveDownIcon className="w-4 h-4 text-blue-500" />}
             label="ЗАГРУЗКА"
             value={downloadMbps ? (unit === "KB/s" ? Math.round(getDisplayValue(downloadMbps)).toLocaleString("ru-RU") : getDisplayValue(downloadMbps).toFixed(1)) : "—"}
-            unit={getUnitLabel(unit).toUpperCase()}
             isActive={phase === "downloading"}
           />
           <ResultColumn 
             icon={<ArchiveUpIcon className="w-4 h-4 text-blue-500" />}
             label="ВЫГРУЗКА"
             value={uploadMbps ? (unit === "KB/s" ? Math.round(getDisplayValue(uploadMbps)).toLocaleString("ru-RU") : getDisplayValue(uploadMbps).toFixed(1)) : "—"}
-            unit={getUnitLabel(unit).toUpperCase()}
             isActive={phase === "uploading"}
           />
           <ResultColumn 
             icon={<ChartSplineIcon className="w-4 h-4 text-blue-500" />}
             label="ПИНГ"
             value={ping !== null ? ping.toString() : "—"}
-            unit="МС"
             isActive={phase === "pinging"}
           />
         </div>
@@ -710,20 +704,19 @@ export default function App() {
 
 // --- Helper Components ---
 
-function ResultColumn({ icon, label, value, unit = "Мбит/с", isActive }: { icon: React.ReactNode, label: string, value: string, unit?: string, isActive: boolean }) {
+function ResultColumn({ icon, label, value, isActive }: { icon: React.ReactNode, label: string, value: string, isActive: boolean }) {
   return (
     <div className={cn(
-      "flex flex-col items-center justify-center py-3 px-2 rounded-2xl transition-all duration-300",
+      "flex flex-col items-center justify-center py-2 px-1 rounded-2xl transition-all duration-300",
       isActive ? "bg-white/5 border border-white/10" : "bg-transparent"
     )}>
-      <div className="flex items-center gap-1.5 mb-1.5 justify-center">
+      <div className="flex items-center gap-1.5 mb-2 justify-center">
         {icon}
-        <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest">{label}</span>
+        <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
       </div>
       <div className="flex items-baseline justify-center">
-        <span className="text-xl sm:text-2xl lg:text-3xl font-bold font-mono text-white tracking-tight">{value}</span>
+        <span className="text-2xl sm:text-3xl font-bold font-mono text-white tracking-tight">{value}</span>
       </div>
-      <span className="text-[9px] sm:text-[10px] text-slate-500 font-semibold mt-0.5 uppercase tracking-wider">{unit}</span>
     </div>
   );
 }
@@ -776,7 +769,7 @@ function HalfCircleGauge({ value, phase, onStart, maxScale, unitLabel }: { value
 
   return (
     <div className="relative w-full max-w-[320px] sm:max-w-[380px] lg:max-w-[460px] pt-12 lg:pt-16 pb-4 flex flex-col items-center justify-center">
-      <div className="absolute top-0 w-full text-center text-sm lg:text-base font-bold tracking-widest text-slate-400 z-10 transition-colors">
+      <div className="absolute top-0 w-full text-center text-sm sm:text-base font-bold tracking-widest text-slate-300 z-10 transition-colors">
         {phaseTitle}
       </div>
 
@@ -863,12 +856,12 @@ function HalfCircleGauge({ value, phase, onStart, maxScale, unitLabel }: { value
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col items-center"
               >
-                <div className="flex items-baseline gap-1">
-                  <span style={{ color: activeColor }} className="text-5xl sm:text-6xl lg:text-7xl font-black font-mono tracking-tighter transition-colors">
+                <div className="flex items-baseline justify-center">
+                  <span style={{ color: activeColor }} className="text-5xl sm:text-6xl font-bold font-mono tracking-tight transition-colors">
                     {displayValue}
                   </span>
                 </div>
-                <span className="text-base sm:text-lg lg:text-xl font-medium text-slate-500 mt-0 sm:mt-1 uppercase tracking-widest">{unitLabel}</span>
+                <span className="text-sm sm:text-base font-medium text-slate-400 mt-0.5 uppercase tracking-widest">{unitLabel}</span>
               </motion.div>
             )}
           </AnimatePresence>
