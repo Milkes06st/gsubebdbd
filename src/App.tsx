@@ -573,7 +573,7 @@ export default function App() {
 
           {/* IP & Location */}
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 lg:h-11 lg:w-11 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400 shrink-0">
+            <div className="h-10 w-10 lg:h-11 lg:w-11 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400 shrink-0">
               <MapPin className="h-5 w-5 lg:h-5 lg:w-5" />
             </div>
             <div className="min-w-0">
@@ -587,7 +587,7 @@ export default function App() {
 
           {/* OS & Browser */}
           <div className="flex items-center gap-3 sm:col-span-2 lg:col-span-1">
-            <div className="h-10 w-10 lg:h-11 lg:w-11 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400 shrink-0">
+            <div className="h-10 w-10 lg:h-11 lg:w-11 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400 shrink-0">
               <Laptop className="h-5 w-5 lg:h-5 lg:w-5" />
             </div>
             <div className="min-w-0">
