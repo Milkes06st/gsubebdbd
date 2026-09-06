@@ -2,5 +2,5 @@
   "name": "Astrotest",
   "description": "Professional internet speed test application with space-themed design. Measures ping, download, upload speeds, and network provider info with Telegram notifications.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

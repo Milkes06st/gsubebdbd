@@ -1,37 +1,80 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, RotateCcw, Share2, MapPin } from "lucide-react";
-import confetti from "canvas-confetti";
+import { Play, RotateCcw, Settings, MapPin, Share2, Copy, Check, ExternalLink, X, Sparkles, Send } from "lucide-react";
 import { fetchNetworkInfo, measurePing, measureDownloadSpeed, measureUploadSpeed, NetworkInfo } from "./lib/speedTest";
 import { cn } from "./lib/utils";
 
 type TestPhase = "idle" | "pinging" | "downloading" | "uploading" | "done";
 
+// Rocket logo matching rocket-svgrepo-com.svg
 const AstroLogo = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <g stroke="currentColor" strokeWidth="2" strokeOpacity="0.8">
-      <ellipse cx="40" cy="50" rx="30" ry="30" />
-      <ellipse cx="40" cy="50" rx="20" ry="32" transform="rotate(20 40 50)" />
-      <ellipse cx="40" cy="50" rx="20" ry="32" transform="rotate(60 40 50)" />
-      <ellipse cx="40" cy="50" rx="20" ry="32" transform="rotate(-30 40 50)" />
-      <ellipse cx="40" cy="50" rx="12" ry="34" transform="rotate(45 40 50)" />
-      <ellipse cx="40" cy="50" rx="32" ry="15" transform="rotate(10 40 50)" />
-    </g>
-    <g fill="currentColor" opacity="0.9">
-      {[
-        { x: 75, y: 30, size: 4 },
-        { x: 82, y: 42, size: 5 },
-        { x: 85, y: 55, size: 5 },
-        { x: 80, y: 68, size: 4 },
-        { x: 70, y: 78, size: 3.5 }
-      ].map((star, i) => (
-        <path key={i}
-          d={`M${star.x},${star.y - star.size} l${star.size * 0.3},${star.size * 0.7} l${star.size * 0.7},${star.size * 0.1} l-${star.size * 0.5},${star.size * 0.5} l${star.size * 0.2},${star.size * 0.8} l-${star.size * 0.7},-${star.size * 0.4} l-${star.size * 0.7},${star.size * 0.4} l${star.size * 0.2},-${star.size * 0.8} l-${star.size * 0.5},-${star.size * 0.5} l${star.size * 0.7},-${star.size * 0.1} z`}
-        />
-      ))}
-    </g>
+  <svg viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M50 4C45 10 19 26 19 46V68C14 71 4 77 1 82C-0.5 84.5 0 88 1.5 91C3 94 6.5 96 10 96H90C93.5 96 97 94 98.5 91C100 88 100.5 84.5 99 82C96 77 86 71 81 68V46C81 26 55 10 50 4ZM50 37.5C53.59 37.5 56.5 40.41 56.5 44C56.5 47.59 53.59 50.5 50 50.5C46.41 50.5 43.5 47.59 43.5 44C43.5 40.41 46.41 37.5 50 37.5Z"
+    />
   </svg>
 );
+
+export interface SharedSpeedtestData {
+  download: number;
+  upload: number;
+  ping: number;
+  isp?: string;
+  city?: string;
+  country?: string;
+  unit?: "Mbps" | "MB/s";
+  date?: string;
+}
+
+export function encodeSpeedtestBase64(data: SharedSpeedtestData): string {
+  try {
+    const json = JSON.stringify(data);
+    const utf8Bytes = new TextEncoder().encode(json);
+    let binary = "";
+    for (let i = 0; i < utf8Bytes.length; i++) {
+      binary += String.fromCharCode(utf8Bytes[i]);
+    }
+    return btoa(binary)
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  } catch (e) {
+    return "";
+  }
+}
+
+export function decodeSpeedtestBase64(str: string): SharedSpeedtestData | null {
+  try {
+    let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
+    while (base64.length % 4) {
+      base64 += "=";
+    }
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const json = new TextDecoder().decode(bytes);
+    const parsed = JSON.parse(json);
+    if (typeof parsed.download === "number" || typeof parsed.d === "number") {
+      return {
+        download: Number(parsed.download ?? parsed.d ?? 0),
+        upload: Number(parsed.upload ?? parsed.u ?? 0),
+        ping: Math.round(Number(parsed.ping ?? parsed.p ?? 0)),
+        isp: parsed.isp,
+        city: parsed.city,
+        country: parsed.country,
+        unit: parsed.unit === "MB/s" ? "MB/s" : "Mbps",
+        date: parsed.date,
+      };
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
 
 const ChartSplineIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("lucide lucide-chart-spline", className)}>
@@ -69,14 +112,115 @@ export default function App() {
   const [progress, setProgress] = useState<number>(0);
   const [isBoostMode, setIsBoostMode] = useState(false);
   const [maxScale, setMaxScale] = useState<number>(100);
-  const confettiCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [unit, setUnit] = useState<"Mbps" | "MB/s">("Mbps");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Sharing & Shared Link state
+  const [isSharedView, setIsSharedView] = useState(false);
+  const [sharedMeta, setSharedMeta] = useState<{ date?: string } | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [copiedToast, setCopiedToast] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
 
   useEffect(() => {
     if (window.location.pathname.toLowerCase() === '/boost100') {
       setIsBoostMode(true);
     }
+
+    // Check for shared results in URL (/speedtest/:b64 or ?result=:b64 or #speedtest/:b64)
+    const pathname = window.location.pathname;
+    const speedtestMatch = pathname.match(/\/speedtest\/([A-Za-z0-9+/=_-]+)/i);
+    const searchParams = new URLSearchParams(window.location.search);
+    const queryB64 = searchParams.get("result") || searchParams.get("b64");
+    const hashMatch = window.location.hash.match(/#\/?speedtest\/([A-Za-z0-9+/=_-]+)/i);
+
+    const rawB64 = speedtestMatch?.[1] || queryB64 || hashMatch?.[1];
+    if (rawB64) {
+      const decoded = decodeSpeedtestBase64(rawB64);
+      if (decoded) {
+        setDownloadMbps(decoded.download);
+        setUploadMbps(decoded.upload);
+        setPing(decoded.ping);
+        if (decoded.unit) setUnit(decoded.unit);
+        setPhase("done");
+        setIsSharedView(true);
+        setSharedMeta({ date: decoded.date });
+        if (decoded.isp || decoded.city) {
+          setNetworkInfo({
+            ip: "Сохранённый замер",
+            isp: decoded.isp || "Интернет-провайдер",
+            city: decoded.city || "",
+            country: decoded.country || "",
+            country_code: ""
+          });
+        }
+        return;
+      }
+    }
+
     fetchNetworkInfo().then(setNetworkInfo);
   }, []);
+
+  const getDisplayValue = (mbps: number) => {
+    return unit === "MB/s" ? mbps / 8 : mbps;
+  };
+
+  const generateShareUrl = () => {
+    const displayDown = getDisplayValue(downloadMbps);
+    const displayUp = getDisplayValue(uploadMbps);
+
+    const payload: SharedSpeedtestData = {
+      download: Number(displayDown.toFixed(1)),
+      upload: Number(displayUp.toFixed(1)),
+      ping: ping !== null ? ping : 0,
+      isp: networkInfo?.isp || "",
+      city: networkInfo?.city || "",
+      country: networkInfo?.country || "",
+      unit: unit,
+      date: new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+    };
+
+    const b64 = encodeSpeedtestBase64(payload);
+    const origin = window.location.origin;
+    return `${origin}/speedtest/${b64}`;
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setCopiedToast(true);
+      setTimeout(() => setCopiedToast(false), 2500);
+    } catch (e) {
+      console.error("Copy failed", e);
+    }
+  };
+
+  const handleOpenShare = () => {
+    const url = generateShareUrl();
+    setShareUrl(url);
+    copyToClipboard(url);
+    setIsShareModalOpen(true);
+  };
+
+  const startFreshTest = () => {
+    setIsSharedView(false);
+    setSharedMeta(null);
+    window.history.pushState({}, "", "/");
+    fetchNetworkInfo().then(setNetworkInfo);
+    runTest();
+  };
 
   const runTest = async () => {
     setPhase("pinging");
@@ -170,56 +314,99 @@ export default function App() {
     sendTelegram();
 
     setTimeout(() => {
-      if (confettiCanvasRef.current) {
-        try {
-          const myConfetti = confetti.create(confettiCanvasRef.current, {
-            resize: true,
-            useWorker: true
-          });
-          myConfetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: ["#3b82f6", "#a855f7", "#10b981"],
-          });
-        } catch (e) {
-          console.warn("Confetti failed", e);
-        }
+      try {
+        // Optionally add a non-canvas success animation here if needed
+      } catch (e) {
+        console.warn("Animation failed", e);
       }
     }, 100);
   };
 
-  const shareResults = async () => {
-    const text = `🚀 Результаты Astrotest:
-⬇️ Загрузка: ${downloadMbps?.toFixed(1)} Мбит/с
-⬆️ Выгрузка: ${uploadMbps?.toFixed(1)} Мбит/с
-Пинг: ${ping}мс
-🌐 Провайдер: ${networkInfo?.isp || "Неизвестно"}
-📍 Локация: ${networkInfo?.city || "Неизвестно"}, ${networkInfo?.country || "Неизвестно"}
-
-🛸 Узнай свою скорость: https://astrotest.duckdns.org`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "Astrotest",
-          text: text,
-        });
-      } catch (err: any) {
-        if (err.name !== "AbortError") {
-          console.error("Share failed, falling back to clipboard", err);
-          await navigator.clipboard.writeText(text);
-          alert("Результаты скопированы!");
-        }
-      }
-    } else {
-      await navigator.clipboard.writeText(text);
-      alert("Результаты скопированы!");
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-neutral-800 text-slate-50 font-sans flex flex-col items-center p-4 sm:p-8 relative overflow-hidden">
+    <div className="min-h-screen bg-[#0a0a0c] text-slate-50 font-sans flex flex-col items-center p-4 sm:p-8 relative overflow-hidden">
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {isSettingsOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsSettingsOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-[#141418] border border-white/10 p-6 rounded-3xl w-full max-w-sm shadow-2xl z-10 flex flex-col gap-6"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/20 rounded-xl text-blue-400">
+                  <Settings className="w-5 h-5" />
+                </div>
+                <h2 className="text-xl font-bold">Настройки</h2>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Единицы измерения</label>
+                  <div className="flex p-1 bg-[#1a1a1f] rounded-xl border border-white/5">
+                    <button
+                      onClick={() => setUnit("Mbps")}
+                      className={cn(
+                        "flex-1 py-2 text-sm font-semibold rounded-lg transition-colors",
+                        unit === "Mbps" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"
+                      )}
+                    >
+                      Мбит/с
+                    </button>
+                    <button
+                      onClick={() => setUnit("MB/s")}
+                      className={cn(
+                        "flex-1 py-2 text-sm font-semibold rounded-lg transition-colors",
+                        unit === "MB/s" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"
+                      )}
+                    >
+                      МБ/с
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Шкала (Мбит/с)</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[100, 250, 500, 1000].map((scale) => (
+                      <button
+                        key={scale}
+                        onClick={() => setMaxScale(scale)}
+                        disabled={phase !== "idle" && phase !== "done"}
+                        className={cn(
+                          "py-2 text-xs font-semibold rounded-lg border transition-colors",
+                          maxScale === scale 
+                            ? "bg-blue-600 border-blue-500 text-white" 
+                            : "bg-[#1a1a1f] border-white/10 text-slate-400 hover:text-white hover:bg-white/5",
+                          (phase !== "idle" && phase !== "done") && "opacity-50 cursor-not-allowed"
+                        )}
+                      >
+                        {scale}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setIsSettingsOpen(false)}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors mt-2"
+              >
+                Готово
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <div className="z-10 w-full flex flex-col items-center w-full">
         {/* Header */}
         <motion.div 
@@ -231,55 +418,227 @@ export default function App() {
           <AstroLogo className="h-10 w-10 text-blue-500" />
           <span>Astro<span className="text-blue-500">test</span></span>
         </div>
-        {phase === "done" && (
-          <button 
-            onClick={shareResults}
-            className="flex items-center gap-2 text-sm font-medium bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition-colors"
-          >
-            <Share2 className="w-4 h-4" /> Поделиться
-          </button>
-        )}
+        <button 
+          onClick={() => setIsSettingsOpen(true)}
+          className="flex items-center justify-center p-2 text-slate-400 bg-slate-800/50 hover:bg-slate-700 hover:text-white rounded-xl transition-colors"
+          aria-label="Настройки"
+        >
+          <Settings className="w-5 h-5" />
+        </button>
       </motion.div>
+
+      {/* Floating Toast Notification */}
+      <AnimatePresence>
+        {copiedToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-6 z-50 px-5 py-3 bg-emerald-600 text-white text-sm font-semibold rounded-2xl shadow-2xl flex items-center gap-2.5 border border-emerald-400/40"
+          >
+            <Check className="w-4 h-4 text-emerald-100" />
+            <span>Ссылка на результат скопирована!</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Share Modal */}
+      <AnimatePresence>
+        {isShareModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-md bg-[#141418] border border-white/10 rounded-3xl p-6 shadow-2xl relative"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                <div className="flex items-center gap-2.5 font-bold text-lg">
+                  <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
+                    <Share2 className="w-5 h-5" />
+                  </div>
+                  <span>Поделиться результатами</span>
+                </div>
+                <button 
+                  onClick={() => setIsShareModalOpen(false)}
+                  className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Results summary card */}
+              <div className="my-5 p-4 rounded-2xl bg-[#1a1a1f] border border-white/5 space-y-3">
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span className="font-semibold uppercase tracking-wider">Итоги замера Astrotest</span>
+                  <span className="text-slate-500 font-medium">{networkInfo?.isp || "Скорость сети"}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                  <div className="p-2.5 rounded-xl bg-white/[0.03]">
+                    <div className="text-[11px] text-slate-400 font-medium">Загрузка</div>
+                    <div className="text-lg font-bold font-mono text-blue-400">
+                      {getDisplayValue(downloadMbps).toFixed(1)}
+                    </div>
+                    <div className="text-[10px] text-slate-500 uppercase">{unit === "MB/s" ? "МБ/с" : "Мбит/с"}</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/[0.03]">
+                    <div className="text-[11px] text-slate-400 font-medium">Выгрузка</div>
+                    <div className="text-lg font-bold font-mono text-purple-400">
+                      {getDisplayValue(uploadMbps).toFixed(1)}
+                    </div>
+                    <div className="text-[10px] text-slate-500 uppercase">{unit === "MB/s" ? "МБ/с" : "Мбит/с"}</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/[0.03]">
+                    <div className="text-[11px] text-slate-400 font-medium">Пинг</div>
+                    <div className="text-lg font-bold font-mono text-emerald-400">
+                      {ping ?? 0}
+                    </div>
+                    <div className="text-[10px] text-slate-500">мс</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Copy Link Input */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
+                  Ссылка на результат (base64)
+                </label>
+                <div className="flex items-center gap-2 bg-[#1a1a1f] border border-white/10 rounded-xl p-1.5 focus-within:border-blue-500 transition-colors">
+                  <input 
+                    readOnly
+                    value={shareUrl}
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                    className="bg-transparent text-slate-300 text-xs px-2 flex-1 focus:outline-none font-mono truncate"
+                  />
+                  <button 
+                    onClick={() => copyToClipboard(shareUrl)}
+                    className={cn(
+                      "px-3.5 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all shrink-0",
+                      copiedToast 
+                        ? "bg-emerald-600 text-white" 
+                        : "bg-blue-600 hover:bg-blue-500 text-white"
+                    )}
+                  >
+                    {copiedToast ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Скопировано</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Копировать</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Share buttons (Telegram, WhatsApp, VK, Web Share) */}
+              <div className="mt-5 space-y-2">
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Отправить напрямую
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <a 
+                    href={`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`🚀 Результаты замера скорости в Astrotest:\n📥 Загрузка: ${getDisplayValue(downloadMbps).toFixed(1)} ${unit === "MB/s" ? "МБ/с" : "Мбит/с"}\n📤 Выгрузка: ${getDisplayValue(uploadMbps).toFixed(1)} ${unit === "MB/s" ? "МБ/с" : "Мбит/с"}\n⚡ Пинг: ${ping ?? 0} мс`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-2.5 px-3 bg-[#1e1e24] hover:bg-[#282832] text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-white/5 transition-colors"
+                  >
+                    <Send className="w-3.5 h-3.5 text-sky-400" />
+                    Telegram
+                  </a>
+                  <a 
+                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`🚀 Результаты замера в Astrotest: Загрузка ${getDisplayValue(downloadMbps).toFixed(1)} ${unit === "MB/s" ? "МБ/с" : "Мбит/с"}, Выгрузка ${getDisplayValue(uploadMbps).toFixed(1)} ${unit === "MB/s" ? "МБ/с" : "Мбит/с"}, Пинг ${ping ?? 0} мс ${shareUrl}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-2.5 px-3 bg-[#1e1e24] hover:bg-[#282832] text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-white/5 transition-colors"
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-emerald-400" />
+                    WhatsApp
+                  </a>
+                  <a 
+                    href={`https://vk.com/share.php?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(`Результаты теста скорости Astrotest`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-2.5 px-3 bg-[#1e1e24] hover:bg-[#282832] text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-white/5 transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
+                    ВКонтакте
+                  </a>
+                </div>
+              </div>
+
+              {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
+                <button 
+                  onClick={() => {
+                    if (navigator.share) {
+                      navigator.share({
+                        title: "Astrotest — Результаты скорости",
+                        text: `Загрузка: ${getDisplayValue(downloadMbps).toFixed(1)} ${unit === "MB/s" ? "МБ/с" : "Мбит/с"}, Выгрузка: ${getDisplayValue(uploadMbps).toFixed(1)} ${unit === "MB/s" ? "МБ/с" : "Мбит/с"}, Пинг: ${ping ?? 0} мс`,
+                        url: shareUrl
+                      }).catch(() => {});
+                    }
+                  }}
+                  className="w-full mt-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-white/5 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  Системное меню «Поделиться»
+                </button>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Main Container */}
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-2xl bg-neutral-900 rounded-3xl p-6 sm:p-10 shadow-2xl border border-white/5"
+        className="w-full max-w-2xl bg-[#141418] rounded-3xl p-6 sm:p-10 shadow-2xl border border-white/5"
       >
+        {/* Shared View Banner */}
+        {isSharedView && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border border-blue-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-xs text-blue-400 font-bold uppercase tracking-wider">Сохранённый замер</div>
+                <div className="text-sm text-slate-200 font-medium">
+                  {sharedMeta?.date ? `Тест проведён ${sharedMeta.date}` : "Результаты теста скорости"}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={startFreshTest}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shrink-0 shadow-lg shadow-blue-500/20"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              Пройти свой тест
+            </button>
+          </motion.div>
+        )}
         
         {/* Gauge Area */}
-        <div className="flex flex-col items-center justify-center py-6 relative">
+        <div className="flex flex-col items-center justify-center pt-2 pb-4 relative">
           <HalfCircleGauge 
-            value={phase === "uploading" ? uploadMbps : downloadMbps} 
+            value={phase === "uploading" ? getDisplayValue(uploadMbps) : getDisplayValue(downloadMbps)} 
             phase={phase} 
             onStart={runTest}
-            maxScale={maxScale}
+            maxScale={unit === "MB/s" ? maxScale / 8 : maxScale}
+            unitLabel={unit === "MB/s" ? "МБ/с" : "Мбит/с"}
           />
-          
-          {/* Scale Selector */}
-          <div className="flex justify-center gap-2 mt-8 z-20 relative">
-            {[100, 250, 500, 1000].map((scale) => (
-              <button
-                key={scale}
-                onClick={() => setMaxScale(scale)}
-                disabled={phase !== "idle" && phase !== "done"}
-                className={cn(
-                  "px-4 py-1 text-xs sm:text-sm font-semibold rounded-full border transition-colors",
-                  maxScale === scale 
-                    ? "bg-blue-600 border-blue-500 text-white" 
-                    : "bg-neutral-800 border-white/10 text-slate-400 hover:text-white hover:bg-white/5",
-                  (phase !== "idle" && phase !== "done") && "opacity-50 cursor-not-allowed"
-                )}
-              >
-                {scale}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Network Info */}
-        <div className="mt-8 mb-6 p-4 rounded-2xl bg-neutral-800 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="mt-8 mb-6 p-4 rounded-2xl bg-[#1a1a1f] flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
               <PlanetIcon className="h-5 w-5" />
@@ -302,13 +661,15 @@ export default function App() {
           <ResultColumn 
             icon={<ArchiveDownIcon className="w-5 h-5 text-blue-400" />}
             label="Загрузка"
-            value={downloadMbps ? downloadMbps.toFixed(1) : "—"}
+            value={downloadMbps ? getDisplayValue(downloadMbps).toFixed(1) : "—"}
+            unit={unit === "MB/s" ? "МБ/с" : "Мбит/с"}
             isActive={phase === "downloading"}
           />
           <ResultColumn 
             icon={<ArchiveUpIcon className="w-5 h-5 text-purple-400" />}
             label="Выгрузка"
-            value={uploadMbps ? uploadMbps.toFixed(1) : "—"}
+            value={uploadMbps ? getDisplayValue(uploadMbps).toFixed(1) : "—"}
+            unit={unit === "MB/s" ? "МБ/с" : "Мбит/с"}
             isActive={phase === "uploading"}
           />
           <ResultColumn 
@@ -320,7 +681,7 @@ export default function App() {
           />
         </div>
 
-        {/* Restart Button */}
+        {/* Action Buttons: Share & Restart */}
         <AnimatePresence>
           {phase === "done" && (
             <motion.div
@@ -328,13 +689,23 @@ export default function App() {
               animate={{ height: "auto", opacity: 1, marginTop: 24 }}
               className="overflow-hidden"
             >
-              <button
-                onClick={runTest}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl py-4 font-bold text-lg flex items-center justify-center gap-3 transition-colors shadow-lg shadow-blue-500/20"
-              >
-                <RotateCcw className="h-5 w-5" />
-                Заново
-              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                <button
+                  onClick={handleOpenShare}
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-all shadow-lg shadow-blue-500/25 active:scale-[0.99]"
+                >
+                  <Share2 className="h-5 w-5" />
+                  Поделиться
+                </button>
+
+                <button
+                  onClick={isSharedView ? startFreshTest : runTest}
+                  className="w-full bg-[#1e1e24] hover:bg-[#282830] text-white rounded-xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-colors border border-white/5 active:scale-[0.99]"
+                >
+                  <RotateCcw className="h-5 w-5" />
+                  {isSharedView ? "Пройти свой тест" : "Заново"}
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -368,7 +739,7 @@ function ResultColumn({ icon, label, value, unit = "Мбит/с", isActive }: { 
   );
 }
 
-function HalfCircleGauge({ value, phase, onStart, maxScale }: { value: number; phase: TestPhase; onStart: () => void; maxScale: number }) {
+function HalfCircleGauge({ value, phase, onStart, maxScale, unitLabel }: { value: number; phase: TestPhase; onStart: () => void; maxScale: number; unitLabel: string }) {
   const isTesting = phase === "downloading" || phase === "uploading";
   const displayValue = isTesting || phase === "done" ? value.toFixed(1) : "0.0";
   
@@ -395,15 +766,16 @@ function HalfCircleGauge({ value, phase, onStart, maxScale }: { value: number; p
   const progressRatio = Math.pow(clampedVal / maxScale, 0.6); 
   const displayOffset = pathLength - (progressRatio * pathLength);
 
-  // Position for the thumb (the "dot" on the edge of the line)
-  // Angle goes from 180 to 0 degrees for SVG (left to right)
-  const angle = Math.PI - (progressRatio * Math.PI);
-  const thumbX = cx + r * Math.cos(angle);
-  const thumbY = cy - r * Math.sin(angle);
+  // Angle goes from PI (left) to 0 (right)
+  const currentAngle = Math.PI - (progressRatio * Math.PI);
+  const thumbX = cx + r * Math.cos(currentAngle);
+  const thumbY = cy - r * Math.sin(currentAngle);
 
   // Ticks calculation
   const numTicks = 5;
-  const tickValues = Array.from({ length: numTicks + 1 }).map((_, i) => Math.round((maxScale / numTicks) * i));
+  const tickValues = Array.from({ length: numTicks + 1 }).map((_, i) => (maxScale / numTicks) * i);
+  // Format nicely for MB/s decimals if needed
+  const formattedTickValues = tickValues.map(v => Number.isInteger(v) ? v.toString() : v.toFixed(1));
 
   return (
     <div className="relative w-full max-w-[320px] pt-12 pb-4 flex flex-col items-center justify-center">
@@ -416,7 +788,7 @@ function HalfCircleGauge({ value, phase, onStart, maxScale }: { value: number; p
           {/* Background Track */}
           <path
             d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
-            stroke="#2e2e36"
+            stroke="#26262c"
             strokeWidth="18"
             strokeLinecap="round"
           />
@@ -438,9 +810,9 @@ function HalfCircleGauge({ value, phase, onStart, maxScale }: { value: number; p
 
             return (
               <g key={i}>
-                <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#475569" strokeWidth="2" strokeLinecap="round" />
-                <text x={tx} y={ty} fill="#64748b" fontSize="12" textAnchor="middle" alignmentBaseline="middle" className="font-mono">
-                  {tickValues[i]}
+                <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#3f3f46" strokeWidth="2" strokeLinecap="round" />
+                <text x={tx} y={ty} fill="#71717a" fontSize="12" textAnchor="middle" alignmentBaseline="middle" className="font-mono">
+                  {formattedTickValues[i]}
                 </text>
               </g>
             );
@@ -453,40 +825,20 @@ function HalfCircleGauge({ value, phase, onStart, maxScale }: { value: number; p
             strokeWidth="18"
             strokeLinecap="round"
             strokeDasharray={pathLength}
-            initial={{ strokeDashoffset: pathLength, filter: 'drop-shadow(0px 0px 0px rgba(0,0,0,0))' }}
-            animate={{ 
-              strokeDashoffset: isTesting || phase === "done" ? displayOffset : pathLength,
-              filter: isTesting 
-                ? [
-                    `drop-shadow(0px 0px 5px ${activeColor}80)`,
-                    `drop-shadow(0px 0px 20px ${activeColor})`,
-                    `drop-shadow(0px 0px 5px ${activeColor}80)`
-                  ] 
-                : phase === "done" 
-                  ? `drop-shadow(0px 0px 10px ${activeColor}80)`
-                  : 'drop-shadow(0px 0px 0px rgba(0,0,0,0))'
-            }}
-            transition={{ 
-              strokeDashoffset: { type: "spring", stiffness: 30, damping: 15 },
-              filter: isTesting ? { repeat: Infinity, duration: 1.5, ease: "easeInOut" } : { duration: 0.5 }
-            }}
+            initial={{ strokeDashoffset: pathLength }}
+            animate={{ strokeDashoffset: isTesting || phase === "done" ? displayOffset : pathLength }}
+            transition={{ type: "spring", stiffness: 30, damping: 15 }}
           />
 
           {/* Thumb Circle */}
           {(isTesting || phase === "done") && (
-            <motion.g
-              initial={{ rotate: 0 }}
-              animate={{ rotate: 180 * progressRatio }}
-              style={{ originX: "50%", originY: "50%" }}
+            <motion.circle
+              initial={{ cx: cx - r, cy: cy }}
+              animate={{ cx: thumbX, cy: thumbY }}
               transition={{ type: "spring", stiffness: 30, damping: 15 }}
-            >
-              <circle cx={cx} cy={cy} r={r} fill="transparent" />
-              <circle
-                cx={cx - r} cy={cy} r="14"
-                fill="white"
-                style={{ filter: `drop-shadow(0px 0px 8px ${activeColor}80)` }}
-              />
-            </motion.g>
+              r="12"
+              fill="white"
+            />
           )}
         </svg>
 
@@ -519,7 +871,7 @@ function HalfCircleGauge({ value, phase, onStart, maxScale }: { value: number; p
                     {displayValue}
                   </span>
                 </div>
-                <span className="text-base sm:text-lg font-medium text-slate-500 mt-0 sm:mt-1 uppercase tracking-widest">Мбит/с</span>
+                <span className="text-base sm:text-lg font-medium text-slate-500 mt-0 sm:mt-1 uppercase tracking-widest">{unitLabel}</span>
               </motion.div>
             )}
           </AnimatePresence>
