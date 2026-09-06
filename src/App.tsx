@@ -604,7 +604,7 @@ export default function App() {
         </div>
 
         {/* Network & System Info Card */}
-        <div className="w-full mt-3 mb-4 p-5 rounded-[22px] bg-[#090b10] border border-white/5 flex flex-col gap-4 shadow-xl">
+        <div className="w-full mt-3 mb-4 p-5 rounded-[22px] bg-[#090b10] flex flex-col gap-4 shadow-xl">
           {/* Provider */}
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="text-blue-500 shrink-0">
