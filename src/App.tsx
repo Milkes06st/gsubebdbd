@@ -539,14 +539,14 @@ export default function App() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full mb-6 p-4 rounded-[20px] bg-[#0c111a] border border-blue-500/20 flex items-center gap-4 text-left shadow-lg shadow-black/40"
+            className="w-full mb-6 p-4 rounded-[20px] bg-black border border-blue-500/50 flex items-center gap-4 text-left shadow-lg shadow-black/50"
           >
-            <div className="h-12 w-12 rounded-2xl bg-[#070b12] text-blue-500 flex items-center justify-center shrink-0 border border-blue-500/15">
+            <div className="h-12 w-12 rounded-2xl bg-black text-blue-500 flex items-center justify-center shrink-0 border border-blue-500/50">
               <AstroLogo className="h-6 w-6 text-blue-500" />
             </div>
             <div className="min-w-0">
               <div className="text-xs text-blue-500 font-bold uppercase tracking-wider">СОХРАНЁННЫЙ ЗАМЕР</div>
-              <div className="text-sm sm:text-base text-white font-medium mt-0.5 truncate">
+              <div className="text-sm sm:text-base text-blue-400 font-medium mt-0.5 truncate">
                 {sharedMeta?.date ? `Тест проведён ${sharedMeta.date}` : "Результаты теста скорости"}
               </div>
             </div>
