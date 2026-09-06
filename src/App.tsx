@@ -578,9 +578,9 @@ export default function App() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full mb-6 p-4 rounded-[20px] bg-[#090b10] border border-white/5 flex items-center gap-4 text-left shadow-lg shadow-black/50"
+            className="w-full mb-6 p-4 rounded-[20px] bg-black flex items-center gap-4 text-left"
           >
-            <div className="h-12 w-12 rounded-2xl bg-black text-blue-500 flex items-center justify-center shrink-0 border border-white/5">
+            <div className="h-12 w-12 rounded-2xl bg-black text-blue-500 flex items-center justify-center shrink-0">
               <AstroLogo className="h-6 w-6 text-blue-500" />
             </div>
             <div className="min-w-0">
@@ -604,7 +604,7 @@ export default function App() {
         </div>
 
         {/* Network & System Info Card */}
-        <div className="w-full mt-3 mb-4 p-5 rounded-[22px] bg-[#090b10] flex flex-col gap-4 shadow-xl">
+        <div className="w-full mt-3 mb-4 p-5 rounded-[22px] bg-black flex flex-col gap-4">
           {/* Provider */}
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="text-blue-500 shrink-0">
