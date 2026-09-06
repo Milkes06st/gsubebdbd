@@ -635,7 +635,7 @@ export default function App() {
               animate={{ height: "auto", opacity: 1, marginTop: 20 }}
               className="overflow-hidden w-full"
             >
-              {isSharedView ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                 <button
                   onClick={handleOpenShare}
                   className={cn(
@@ -657,39 +657,18 @@ export default function App() {
                     </>
                   )}
                 </button>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-                  <button
-                    onClick={handleOpenShare}
-                    className={cn(
-                      "w-full rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]",
-                      copiedToast
-                        ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/25"
-                        : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25"
-                    )}
-                  >
-                    {copiedToast ? (
-                      <>
-                        <Check className="h-5 w-5 text-emerald-200" />
-                        Ссылка скопирована!
-                      </>
-                    ) : (
-                      <>
-                        <Share2 className="h-5 w-5" />
-                        Поделиться
-                      </>
-                    )}
-                  </button>
 
-                  <button
-                    onClick={runTest}
-                    className="w-full bg-[#16161c] hover:bg-[#202028] text-white rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-colors border border-white/5 active:scale-[0.99]"
-                  >
-                    <RotateCcw className="h-5 w-5" />
-                    Заново
-                  </button>
-                </div>
-              )}
+                <button
+                  onClick={() => {
+                    if (isSharedView) setIsSharedView(false);
+                    runTest();
+                  }}
+                  className="w-full bg-black hover:bg-white/5 text-white rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-colors border border-white/15 active:scale-[0.99]"
+                >
+                  <RotateCcw className="h-5 w-5" />
+                  Заново
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
