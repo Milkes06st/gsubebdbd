@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, RotateCcw, Settings, MapPin, Share2, Check } from "lucide-react";
+import { Play, RotateCcw, Settings, MapPin, Share2, Check, Laptop } from "lucide-react";
 import { fetchNetworkInfo, measurePing, measureDownloadSpeed, measureUploadSpeed, NetworkInfo } from "./lib/speedTest";
 import { cn } from "./lib/utils";
 
 type TestPhase = "idle" | "pinging" | "downloading" | "uploading" | "done";
+export type SpeedUnit = "Mbps" | "MB/s" | "KB/s";
 
 // Rocket logo matching rocket-svgrepo-com.svg
 const AstroLogo = ({ className }: { className?: string }) => (
@@ -21,11 +22,58 @@ export interface SharedSpeedtestData {
   download: number;
   upload: number;
   ping: number;
+  ip?: string;
   isp?: string;
   city?: string;
   country?: string;
-  unit?: "Mbps" | "MB/s";
+  os?: string;
+  browser?: string;
+  unit?: SpeedUnit;
   date?: string;
+}
+
+export function detectClientSystem(): { os: string; browser: string } {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return { os: "ОС", browser: "Браузер" };
+  }
+
+  const ua = navigator.userAgent || "";
+
+  // OS Detection
+  let os = "Linux";
+  if (/android/i.test(ua)) {
+    os = "Android";
+  } else if (/iphone|ipad|ipod/i.test(ua)) {
+    os = "iOS";
+  } else if (/windows nt 10\.0/i.test(ua) || /windows nt 11\.0/i.test(ua) || /windows/i.test(ua)) {
+    os = "Windows";
+  } else if (/mac os x|macintosh/i.test(ua)) {
+    os = "macOS";
+  } else if (/cros/i.test(ua)) {
+    os = "ChromeOS";
+  } else if (/linux/i.test(ua)) {
+    os = "Linux";
+  }
+
+  // Browser Detection
+  let browser = "Браузер";
+  if (/yabrowser/i.test(ua)) {
+    browser = "Яндекс Браузер";
+  } else if (/samsungbrowser/i.test(ua)) {
+    browser = "Samsung Browser";
+  } else if (/opera|opr\//i.test(ua)) {
+    browser = "Opera";
+  } else if (/edg\//i.test(ua)) {
+    browser = "Edge";
+  } else if (/firefox|fxios/i.test(ua)) {
+    browser = "Firefox";
+  } else if (/chrome|crios/i.test(ua)) {
+    browser = "Chrome";
+  } else if (/safari/i.test(ua) && !/chrome|crios/i.test(ua)) {
+    browser = "Safari";
+  }
+
+  return { os, browser };
 }
 
 export function encodeSpeedtestBase64(data: SharedSpeedtestData): string {
@@ -59,14 +107,21 @@ export function decodeSpeedtestBase64(str: string): SharedSpeedtestData | null {
     const json = new TextDecoder().decode(bytes);
     const parsed = JSON.parse(json);
     if (typeof parsed.download === "number" || typeof parsed.d === "number") {
+      let unit: SpeedUnit = "Mbps";
+      if (parsed.unit === "MB/s" || parsed.u === "MB/s") unit = "MB/s";
+      else if (parsed.unit === "KB/s" || parsed.u === "KB/s") unit = "KB/s";
+
       return {
         download: Number(parsed.download ?? parsed.d ?? 0),
         upload: Number(parsed.upload ?? parsed.u ?? 0),
         ping: Math.round(Number(parsed.ping ?? parsed.p ?? 0)),
+        ip: parsed.ip || parsed.i,
         isp: parsed.isp,
         city: parsed.city,
         country: parsed.country,
-        unit: parsed.unit === "MB/s" ? "MB/s" : "Mbps",
+        os: parsed.os,
+        browser: parsed.browser || parsed.b,
+        unit: unit,
         date: parsed.date,
       };
     }
@@ -112,7 +167,8 @@ export default function App() {
   const [progress, setProgress] = useState<number>(0);
   const [isBoostMode, setIsBoostMode] = useState(false);
   const [maxScale, setMaxScale] = useState<number>(100);
-  const [unit, setUnit] = useState<"Mbps" | "MB/s">("Mbps");
+  const [unit, setUnit] = useState<SpeedUnit>("Mbps");
+  const [clientSystem, setClientSystem] = useState<{ os: string; browser: string }>(() => detectClientSystem());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Sharing & Shared Link state
@@ -143,13 +199,19 @@ export default function App() {
         setPhase("done");
         setIsSharedView(true);
         setSharedMeta({ date: decoded.date });
-        if (decoded.isp || decoded.city) {
+        if (decoded.isp || decoded.city || decoded.ip) {
           setNetworkInfo({
-            ip: "Сохранённый замер",
+            ip: decoded.ip || "—",
             isp: decoded.isp || "Интернет-провайдер",
             city: decoded.city || "",
             country: decoded.country || "",
             country_code: ""
+          });
+        }
+        if (decoded.os && decoded.browser) {
+          setClientSystem({
+            os: decoded.os,
+            browser: decoded.browser
           });
         }
         return;
@@ -160,7 +222,15 @@ export default function App() {
   }, []);
 
   const getDisplayValue = (mbps: number) => {
-    return unit === "MB/s" ? mbps / 8 : mbps;
+    if (unit === "MB/s") return mbps / 8;
+    if (unit === "KB/s") return (mbps * 1000) / 8;
+    return mbps;
+  };
+
+  const getUnitLabel = (u: SpeedUnit = unit) => {
+    if (u === "MB/s") return "МБ/с";
+    if (u === "KB/s") return "КБ/с";
+    return "Мбит/с";
   };
 
   const generateShareUrl = () => {
@@ -168,12 +238,15 @@ export default function App() {
     const displayUp = getDisplayValue(uploadMbps);
 
     const payload: SharedSpeedtestData = {
-      download: Number(displayDown.toFixed(1)),
-      upload: Number(displayUp.toFixed(1)),
+      download: Number(displayDown.toFixed(unit === "KB/s" ? 0 : 1)),
+      upload: Number(displayUp.toFixed(unit === "KB/s" ? 0 : 1)),
       ping: ping !== null ? ping : 0,
+      ip: networkInfo?.ip || "",
       isp: networkInfo?.isp || "",
       city: networkInfo?.city || "",
       country: networkInfo?.country || "",
+      os: clientSystem.os,
+      browser: clientSystem.browser,
       unit: unit,
       date: new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
     };
@@ -349,12 +422,12 @@ export default function App() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Единицы измерения</label>
-                  <div className="flex p-1 bg-[#1a1a1f] rounded-xl border border-white/5">
+                  <div className="grid grid-cols-3 p-1 bg-[#1a1a1f] rounded-xl border border-white/5 gap-1">
                     <button
                       onClick={() => setUnit("Mbps")}
                       className={cn(
-                        "flex-1 py-2 text-sm font-semibold rounded-lg transition-colors",
-                        unit === "Mbps" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"
+                        "py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors text-center",
+                        unit === "Mbps" ? "bg-slate-700 text-white shadow" : "text-slate-400 hover:text-white"
                       )}
                     >
                       Мбит/с
@@ -362,11 +435,20 @@ export default function App() {
                     <button
                       onClick={() => setUnit("MB/s")}
                       className={cn(
-                        "flex-1 py-2 text-sm font-semibold rounded-lg transition-colors",
-                        unit === "MB/s" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"
+                        "py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors text-center",
+                        unit === "MB/s" ? "bg-slate-700 text-white shadow" : "text-slate-400 hover:text-white"
                       )}
                     >
                       МБ/с
+                    </button>
+                    <button
+                      onClick={() => setUnit("KB/s")}
+                      className={cn(
+                        "py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors text-center",
+                        unit === "KB/s" ? "bg-slate-700 text-white shadow" : "text-slate-400 hover:text-white"
+                      )}
+                    >
+                      КБ/с
                     </button>
                   </div>
                 </div>
@@ -471,26 +553,48 @@ export default function App() {
             value={phase === "uploading" ? getDisplayValue(uploadMbps) : getDisplayValue(downloadMbps)} 
             phase={phase} 
             onStart={runTest}
-            maxScale={unit === "MB/s" ? maxScale / 8 : maxScale}
-            unitLabel={unit === "MB/s" ? "МБ/с" : "Мбит/с"}
+            maxScale={unit === "MB/s" ? maxScale / 8 : (unit === "KB/s" ? (maxScale * 1000) / 8 : maxScale)}
+            unitLabel={getUnitLabel(unit)}
           />
         </div>
 
-        {/* Network Info */}
-        <div className="mt-8 mb-6 p-4 lg:p-5 rounded-2xl bg-[#1a1a1f] flex flex-col sm:flex-row justify-between items-center gap-4">
+        {/* Network & System Info */}
+        <div className="mt-8 mb-6 p-4 lg:p-5 rounded-2xl bg-[#1a1a1f] border border-white/5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-center">
+          {/* Provider */}
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 lg:h-12 lg:w-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
-              <PlanetIcon className="h-5 w-5 lg:h-6 lg:w-6" />
+            <div className="h-10 w-10 lg:h-11 lg:w-11 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400 shrink-0">
+              <PlanetIcon className="h-5 w-5 lg:h-5 lg:w-5" />
             </div>
-            <div>
-              <div className="text-xs lg:text-sm text-slate-400 uppercase tracking-wider font-semibold">Провайдер</div>
-              <div className="font-semibold text-sm lg:text-base">{networkInfo?.isp || "Поиск..."}</div>
+            <div className="min-w-0">
+              <div className="text-[11px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">Провайдер</div>
+              <div className="font-semibold text-sm lg:text-base text-slate-100 truncate">{networkInfo?.isp || "Поиск..."}</div>
             </div>
           </div>
-          <div className="flex flex-col sm:items-end text-center sm:text-right">
-            <div className="text-xs lg:text-sm text-slate-400 uppercase tracking-wider font-semibold">IP / Локация</div>
-            <div className="font-medium text-slate-200 text-sm lg:text-base">
-              {networkInfo?.ip || "..."} <span className="text-slate-500 mx-1">•</span> {networkInfo ? `${networkInfo.city}` : "..."}
+
+          {/* IP & Location */}
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 lg:h-11 lg:w-11 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400 shrink-0">
+              <MapPin className="h-5 w-5 lg:h-5 lg:w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">IP / Локация</div>
+              <div className="font-medium text-slate-200 text-sm lg:text-base truncate">
+                {networkInfo?.ip || "..."}
+                {networkInfo?.city ? <span className="text-slate-400 font-normal"> • {networkInfo.city}</span> : ""}
+              </div>
+            </div>
+          </div>
+
+          {/* OS & Browser */}
+          <div className="flex items-center gap-3 sm:col-span-2 lg:col-span-1">
+            <div className="h-10 w-10 lg:h-11 lg:w-11 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400 shrink-0">
+              <Laptop className="h-5 w-5 lg:h-5 lg:w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">ОС и Браузер</div>
+              <div className="font-semibold text-sm lg:text-base text-slate-100 truncate">
+                {clientSystem.os} <span className="text-slate-500 mx-1">•</span> {clientSystem.browser}
+              </div>
             </div>
           </div>
         </div>
@@ -500,15 +604,15 @@ export default function App() {
           <ResultColumn 
             icon={<ArchiveDownIcon className="w-5 h-5 lg:w-6 lg:h-6 text-blue-400" />}
             label="Загрузка"
-            value={downloadMbps ? getDisplayValue(downloadMbps).toFixed(1) : "—"}
-            unit={unit === "MB/s" ? "МБ/с" : "Мбит/с"}
+            value={downloadMbps ? (unit === "KB/s" ? Math.round(getDisplayValue(downloadMbps)).toLocaleString("ru-RU") : getDisplayValue(downloadMbps).toFixed(1)) : "—"}
+            unit={getUnitLabel(unit)}
             isActive={phase === "downloading"}
           />
           <ResultColumn 
             icon={<ArchiveUpIcon className="w-5 h-5 lg:w-6 lg:h-6 text-purple-400" />}
             label="Выгрузка"
-            value={uploadMbps ? getDisplayValue(uploadMbps).toFixed(1) : "—"}
-            unit={unit === "MB/s" ? "МБ/с" : "Мбит/с"}
+            value={uploadMbps ? (unit === "KB/s" ? Math.round(getDisplayValue(uploadMbps)).toLocaleString("ru-RU") : getDisplayValue(uploadMbps).toFixed(1)) : "—"}
+            unit={getUnitLabel(unit)}
             isActive={phase === "uploading"}
           />
           <ResultColumn 
@@ -620,7 +724,9 @@ function ResultColumn({ icon, label, value, unit = "Мбит/с", isActive }: { 
 
 function HalfCircleGauge({ value, phase, onStart, maxScale, unitLabel }: { value: number; phase: TestPhase; onStart: () => void; maxScale: number; unitLabel: string }) {
   const isTesting = phase === "downloading" || phase === "uploading";
-  const displayValue = isTesting || phase === "done" ? value.toFixed(1) : "0.0";
+  const displayValue = isTesting || phase === "done" 
+    ? (unitLabel === "КБ/с" ? Math.round(value).toLocaleString("ru-RU") : value.toFixed(1)) 
+    : "0.0";
   
   // Title based on phase
   let phaseTitle = "ГОТОВ К ТЕСТУ";
@@ -653,8 +759,14 @@ function HalfCircleGauge({ value, phase, onStart, maxScale, unitLabel }: { value
   // Ticks calculation
   const numTicks = 5;
   const tickValues = Array.from({ length: numTicks + 1 }).map((_, i) => (maxScale / numTicks) * i);
-  // Format nicely for MB/s decimals if needed
-  const formattedTickValues = tickValues.map(v => Number.isInteger(v) ? v.toString() : v.toFixed(1));
+  // Format nicely for MB/s or KB/s decimals
+  const formattedTickValues = tickValues.map(v => {
+    if (unitLabel === "КБ/с") {
+      if (v >= 10000) return `${Math.round(v / 1000)}k`;
+      return Math.round(v).toString();
+    }
+    return Number.isInteger(v) ? v.toString() : v.toFixed(1);
+  });
 
   return (
     <div className="relative w-full max-w-[320px] sm:max-w-[380px] lg:max-w-[460px] pt-12 lg:pt-16 pb-4 flex flex-col items-center justify-center">
