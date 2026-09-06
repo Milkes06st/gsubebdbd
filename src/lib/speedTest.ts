@@ -6,27 +6,63 @@ export interface NetworkInfo {
 }
 
 export async function fetchNetworkInfo(): Promise<NetworkInfo | null> {
+  const t = Date.now();
+
+  // Try 1: Internal proxy API (combines ipwho.is, geojs.io, ip-api.com)
   try {
-    const response = await fetch("https://ipinfo.io/json", { cache: "no-store" });
-    if (!response.ok) throw new Error("Failed to fetch proxy IP info");
-    const data = await response.json();
-    
-    // ipinfo.io 'org' field often starts with the ASN like "AS12345 Company Name"
-    let ispName = data.org || "Unknown ISP";
-    if (ispName.startsWith("AS") && ispName.includes(" ")) {
-      ispName = ispName.split(" ").slice(1).join(" ");
+    const res = await fetch(`/api/ip?t=${t}`, { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.ip) {
+        return {
+          ip: data.ip,
+          isp: data.isp || "Unknown ISP",
+          country: data.country || "",
+          city: data.city || "",
+        };
+      }
     }
-    
-    return {
-      ip: data.ip,
-      isp: ispName,
-      country: data.country || "Unknown Country",
-      city: data.city || "Unknown City",
-    };
+  } catch (e) {
+    // Continue to fallbacks
+  }
+
+  // Try 2: Direct geojs.io (no API key required, fast)
+  try {
+    const res = await fetch(`https://get.geojs.io/v1/ip/geo.json?t=${t}`, { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.ip) {
+        return {
+          ip: data.ip,
+          isp: data.organization_name || "Unknown ISP",
+          country: data.country || "",
+          city: data.city || "",
+        };
+      }
+    }
+  } catch (e) {}
+
+  // Try 3: ipinfo.io
+  try {
+    const response = await fetch(`https://ipinfo.io/json?t=${t}`, { cache: "no-store" });
+    if (response.ok) {
+      const data = await response.json();
+      let ispName = data.org || "Unknown ISP";
+      if (ispName.startsWith("AS") && ispName.includes(" ")) {
+        ispName = ispName.split(" ").slice(1).join(" ");
+      }
+      return {
+        ip: data.ip,
+        isp: ispName,
+        country: data.country || "Unknown Country",
+        city: data.city || "Unknown City",
+      };
+    }
   } catch (err) {
     console.error("Failed to fetch network info", err);
-    return null;
   }
+
+  return null;
 }
 
 export async function measurePing(): Promise<number> {

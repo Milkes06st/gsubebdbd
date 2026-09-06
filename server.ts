@@ -277,6 +277,9 @@ async function startServer() {
     }
   });
 
+  // Serve static public assets (favicons, icons, manifest)
+  app.use(express.static(path.join(process.cwd(), 'public')));
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

