@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, RotateCcw, Settings, MapPin, Share2, Check, Laptop } from "lucide-react";
+import { Play, RotateCcw, Settings, MapPin, Share2, Check } from "lucide-react";
 import { fetchNetworkInfo, measurePing, measureDownloadSpeed, measureUploadSpeed, NetworkInfo } from "./lib/speedTest";
 import { cn } from "./lib/utils";
 
@@ -138,11 +138,42 @@ const ChartSplineIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const PlanetIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("lucide", className)}>
-    <circle cx="12" cy="12" r="10"/>
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-    <path d="M2 12h20"/>
+// Earth Globe matching planet-earth-global-svgrepo-com.svg
+const PlanetEarthIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 100 100"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="6"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={cn("shrink-0", className)}
+  >
+    <circle cx="50" cy="50" r="46" />
+    <path d="M43 7c-2 8 4 11 8 7 1-4-2-7-8-7z" />
+    <path d="M57 11c3 3 7 4 9 1" />
+    <path d="M13 28c5-4 11-5 17-9 3 4-2 9 4 10 4 2 1 14-2 22-2-6-8-13-12-23z" />
+    <path d="M32 51c5-1 12 0 15 8 1 8-3 18-8 25-4-9-8-20-7-33z" />
+    <path d="M53 36c-7 4-9 12-4 18 5-1 8 10 4 28 3 3 8-5 10-15 5-9 1-19-4-28-3-2-4-3-6-3z" />
+    <path d="M50 25c7-1 13 4 14 9" />
+    <path d="M68 20c7 5 5 13 11 19-5 7 3 13-3 20 6 5 2 14 8 18" />
+  </svg>
+);
+
+// Smartphone silhouette matching 1976104.svg
+const PhoneDeviceIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className={cn("shrink-0", className)}
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M7.5 1.25C6.26 1.25 5.25 2.26 5.25 3.5v17c0 1.24 1.01 2.25 2.25 2.25h9c1.24 0 2.25-1.01 2.25-2.25v-17c0-1.24-1.01-2.25-2.25-2.25h-9zm3 1.75a.375.375 0 0 0 0 .75h3a.375.375 0 0 0 0-.75h-3zM6.5 5h11v13h-11V5zm5.5 16.5a1.125 1.125 0 1 0 0-2.25 1.125 1.125 0 0 0 0 2.25z"
+    />
   </svg>
 );
 
@@ -577,7 +608,7 @@ export default function App() {
           {/* Provider */}
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="text-blue-500 shrink-0">
-              <PlanetIcon className="h-5 w-5" />
+              <PlanetEarthIcon className="h-5 w-5" />
             </div>
             <div className="min-w-0">
               <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">ПРОВАЙДЕР</div>
@@ -588,7 +619,7 @@ export default function App() {
           {/* OS & Browser */}
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="text-blue-500 shrink-0">
-              <Laptop className="h-5 w-5" />
+              <PhoneDeviceIcon className="h-5 w-5" />
             </div>
             <div className="min-w-0">
               <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">ОС И БРАУЗЕР</div>
