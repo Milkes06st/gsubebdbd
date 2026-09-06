@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, RotateCcw, Settings, MapPin, Share2, Copy, Check, ExternalLink, X, Sparkles, Send } from "lucide-react";
+import { Play, RotateCcw, Settings, MapPin, Share2, Check, Sparkles } from "lucide-react";
 import { fetchNetworkInfo, measurePing, measureDownloadSpeed, measureUploadSpeed, NetworkInfo } from "./lib/speedTest";
 import { cn } from "./lib/utils";
 
@@ -118,9 +118,7 @@ export default function App() {
   // Sharing & Shared Link state
   const [isSharedView, setIsSharedView] = useState(false);
   const [sharedMeta, setSharedMeta] = useState<{ date?: string } | null>(null);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [copiedToast, setCopiedToast] = useState(false);
-  const [shareUrl, setShareUrl] = useState("");
 
   useEffect(() => {
     if (window.location.pathname.toLowerCase() === '/boost100') {
@@ -181,7 +179,9 @@ export default function App() {
     };
 
     const b64 = encodeSpeedtestBase64(payload);
-    const origin = window.location.origin;
+    const origin = window.location.hostname.includes("vercel.app")
+      ? window.location.origin
+      : "https://astrotest-delta.vercel.app";
     return `${origin}/speedtest/${b64}`;
   };
 
@@ -209,9 +209,7 @@ export default function App() {
 
   const handleOpenShare = () => {
     const url = generateShareUrl();
-    setShareUrl(url);
     copyToClipboard(url);
-    setIsShareModalOpen(true);
   };
 
   const startFreshTest = () => {
@@ -442,156 +440,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Share Modal */}
-      <AnimatePresence>
-        {isShareModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-md bg-[#141418] border border-white/10 rounded-3xl p-6 shadow-2xl relative"
-            >
-              <div className="flex items-center justify-between pb-4 border-b border-white/10">
-                <div className="flex items-center gap-2.5 font-bold text-lg">
-                  <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
-                    <Share2 className="w-5 h-5" />
-                  </div>
-                  <span>Поделиться результатами</span>
-                </div>
-                <button 
-                  onClick={() => setIsShareModalOpen(false)}
-                  className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Results summary card */}
-              <div className="my-5 p-4 rounded-2xl bg-[#1a1a1f] border border-white/5 space-y-3">
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span className="font-semibold uppercase tracking-wider">Итоги замера Astrotest</span>
-                  <span className="text-slate-500 font-medium">{networkInfo?.isp || "Скорость сети"}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center pt-1">
-                  <div className="p-2.5 rounded-xl bg-white/[0.03]">
-                    <div className="text-[11px] text-slate-400 font-medium">Загрузка</div>
-                    <div className="text-lg font-bold font-mono text-blue-400">
-                      {getDisplayValue(downloadMbps).toFixed(1)}
-                    </div>
-                    <div className="text-[10px] text-slate-500 uppercase">{unit === "MB/s" ? "МБ/с" : "Мбит/с"}</div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-white/[0.03]">
-                    <div className="text-[11px] text-slate-400 font-medium">Выгрузка</div>
-                    <div className="text-lg font-bold font-mono text-purple-400">
-                      {getDisplayValue(uploadMbps).toFixed(1)}
-                    </div>
-                    <div className="text-[10px] text-slate-500 uppercase">{unit === "MB/s" ? "МБ/с" : "Мбит/с"}</div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-white/[0.03]">
-                    <div className="text-[11px] text-slate-400 font-medium">Пинг</div>
-                    <div className="text-lg font-bold font-mono text-emerald-400">
-                      {ping ?? 0}
-                    </div>
-                    <div className="text-[10px] text-slate-500">мс</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Copy Link Input */}
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
-                  Ссылка на результат (base64)
-                </label>
-                <div className="flex items-center gap-2 bg-[#1a1a1f] border border-white/10 rounded-xl p-1.5 focus-within:border-blue-500 transition-colors">
-                  <input 
-                    readOnly
-                    value={shareUrl}
-                    onClick={(e) => (e.target as HTMLInputElement).select()}
-                    className="bg-transparent text-slate-300 text-xs px-2 flex-1 focus:outline-none font-mono truncate"
-                  />
-                  <button 
-                    onClick={() => copyToClipboard(shareUrl)}
-                    className={cn(
-                      "px-3.5 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all shrink-0",
-                      copiedToast 
-                        ? "bg-emerald-600 text-white" 
-                        : "bg-blue-600 hover:bg-blue-500 text-white"
-                    )}
-                  >
-                    {copiedToast ? (
-                      <>
-                        <Check className="w-3.5 h-3.5" />
-                        <span>Скопировано</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Копировать</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Share buttons (Telegram, WhatsApp, VK, Web Share) */}
-              <div className="mt-5 space-y-2">
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  Отправить напрямую
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <a 
-                    href={`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`🚀 Результаты замера скорости в Astrotest:\n📥 Загрузка: ${getDisplayValue(downloadMbps).toFixed(1)} ${unit === "MB/s" ? "МБ/с" : "Мбит/с"}\n📤 Выгрузка: ${getDisplayValue(uploadMbps).toFixed(1)} ${unit === "MB/s" ? "МБ/с" : "Мбит/с"}\n⚡ Пинг: ${ping ?? 0} мс`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="py-2.5 px-3 bg-[#1e1e24] hover:bg-[#282832] text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-white/5 transition-colors"
-                  >
-                    <Send className="w-3.5 h-3.5 text-sky-400" />
-                    Telegram
-                  </a>
-                  <a 
-                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`🚀 Результаты замера в Astrotest: Загрузка ${getDisplayValue(downloadMbps).toFixed(1)} ${unit === "MB/s" ? "МБ/с" : "Мбит/с"}, Выгрузка ${getDisplayValue(uploadMbps).toFixed(1)} ${unit === "MB/s" ? "МБ/с" : "Мбит/с"}, Пинг ${ping ?? 0} мс ${shareUrl}`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="py-2.5 px-3 bg-[#1e1e24] hover:bg-[#282832] text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-white/5 transition-colors"
-                  >
-                    <Share2 className="w-3.5 h-3.5 text-emerald-400" />
-                    WhatsApp
-                  </a>
-                  <a 
-                    href={`https://vk.com/share.php?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(`Результаты теста скорости Astrotest`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="py-2.5 px-3 bg-[#1e1e24] hover:bg-[#282832] text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-white/5 transition-colors"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
-                    ВКонтакте
-                  </a>
-                </div>
-              </div>
-
-              {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
-                <button 
-                  onClick={() => {
-                    if (navigator.share) {
-                      navigator.share({
-                        title: "Astrotest — Результаты скорости",
-                        text: `Загрузка: ${getDisplayValue(downloadMbps).toFixed(1)} ${unit === "MB/s" ? "МБ/с" : "Мбит/с"}, Выгрузка: ${getDisplayValue(uploadMbps).toFixed(1)} ${unit === "MB/s" ? "МБ/с" : "Мбит/с"}, Пинг: ${ping ?? 0} мс`,
-                        url: shareUrl
-                      }).catch(() => {});
-                    }
-                  }}
-                  className="w-full mt-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-white/5 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Share2 className="w-3.5 h-3.5" />
-                  Системное меню «Поделиться»
-                </button>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
       {/* Main Container */}
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
@@ -692,10 +540,24 @@ export default function App() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                 <button
                   onClick={handleOpenShare}
-                  className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-all shadow-lg shadow-blue-500/25 active:scale-[0.99]"
+                  className={cn(
+                    "w-full rounded-xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]",
+                    copiedToast
+                      ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/25"
+                      : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25"
+                  )}
                 >
-                  <Share2 className="h-5 w-5" />
-                  Поделиться
+                  {copiedToast ? (
+                    <>
+                      <Check className="h-5 w-5 text-emerald-200" />
+                      Ссылка скопирована!
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="h-5 w-5" />
+                      Поделиться
+                    </>
+                  )}
                 </button>
 
                 <button
