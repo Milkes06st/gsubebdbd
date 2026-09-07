@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useSpring, useTransform } from "framer-motion";
-import { Play, RotateCcw, Settings, MapPin, Share2, Check, Terminal, Copy, X, Server } from "lucide-react";
+import { Play, RotateCcw, Settings, MapPin, Share2, Check, Terminal, Copy, X, Server, ArrowLeft } from "lucide-react";
 import { fetchNetworkInfo, measurePing, measureDownloadSpeed, measureUploadSpeed, NetworkInfo } from "./lib/speedTest";
 import { cn } from "./lib/utils";
 
@@ -559,48 +559,80 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Модальное окно CLI для серверов */}
+      {/* Окно CLI для серверов на весь экран */}
       <AnimatePresence>
         {isCliModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#0b0e14] border border-white/10 rounded-3xl p-5 sm:p-6 w-full max-w-lg shadow-2xl text-left relative max-h-[92vh] overflow-y-auto"
-            >
-              {/* Заголовок */}
-              <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 bg-black text-white flex flex-col h-full w-full overflow-y-auto"
+          >
+            {/* Верхняя навигационная панель / Header */}
+            <div className="w-full border-b border-white/10 bg-black/90 sticky top-0 z-30 backdrop-blur-md">
+              <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                    <Terminal className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white tracking-wide">Astrotest для Linux-серверов</h3>
-                    <p className="text-xs text-slate-400">Запуск замера из консоли с веб-итогами</p>
+                  <button 
+                    onClick={() => setIsCliModalOpen(false)}
+                    className="p-2 -ml-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2 text-sm font-medium"
+                    title="Назад к тесту"
+                  >
+                    <ArrowLeft className="w-5 h-5 text-slate-300" />
+                    <span className="hidden sm:inline">Назад к тесту</span>
+                  </button>
+                  <div className="h-4 w-px bg-white/10 hidden sm:block" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 sm:p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      <Terminal className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm sm:text-base font-bold text-white tracking-wide">Astrotest CLI</h2>
+                      <p className="text-[11px] text-slate-400 hidden sm:block">Тест скорости на Linux-серверах с веб-отчётом</p>
+                    </div>
                   </div>
                 </div>
+
                 <button 
                   onClick={() => setIsCliModalOpen(false)}
-                  className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors"
+                  className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                  aria-label="Закрыть"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
+            </div>
 
-              <div className="space-y-4 text-xs sm:text-sm text-slate-300">
-                <p className="text-slate-300 leading-relaxed">
-                  Проверьте реальную пропускную способность вашего VPS или выделенного сервера без установки лишнего ПО. Скрипт выдаст результаты в консоль и сформирует ссылку на отчёт в веб-интерфейсе Astrotest.
+            {/* Основной контент на весь экран */}
+            <div className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10 flex flex-col gap-6 text-left">
+              {/* Заголовок страницы */}
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold">
+                  <Server className="w-3.5 h-3.5" />
+                  <span>Linux VPS / VDS / Dedicated</span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                  Замер скорости в терминале сервера
+                </h1>
+                <p className="text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
+                  Проверьте реальную пропускную способность любого Linux-сервера без установки тяжёлого ПО. Скрипт мгновенно измерит пинг, скорость скачивания и отдачи, выведет данные в консоль и сгенерирует прямую ссылку на интерактивный веб-отчёт.
                 </p>
+              </div>
 
-                {/* Быстрый запуск */}
-                <div className="space-y-1.5">
+              {/* Секция команд */}
+              <div className="space-y-4">
+                {/* 1. Быстрый запуск */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-blue-400">1. Быстрый запуск (одна команда):</span>
-                    {copiedCmd === "quick" && <span className="text-xs text-emerald-400 font-semibold">Скопировано!</span>}
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-[11px] font-bold flex items-center justify-center">1</span>
+                      <span className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">Быстрый запуск (рекомендуется)</span>
+                    </div>
+                    {copiedCmd === "quick" && <span className="text-xs text-emerald-400 font-semibold animate-pulse">Скопировано!</span>}
                   </div>
+                  <p className="text-xs text-slate-400">Запускает разовый тест и сразу возвращает результаты с веб-ссылкой:</p>
                   <div className="relative group">
-                    <pre className="p-3 bg-black rounded-xl border border-white/10 font-mono text-[11px] sm:text-xs text-blue-300 overflow-x-auto whitespace-pre-wrap break-all select-all">
+                    <pre className="p-3.5 sm:p-4 bg-black rounded-xl border border-white/10 font-mono text-xs sm:text-sm text-blue-300 overflow-x-auto whitespace-pre-wrap break-all select-all">
                       {`curl -sL https://astrotest-delta.vercel.app/cli | bash`}
                     </pre>
                     <button
@@ -609,7 +641,7 @@ export default function App() {
                         setCopiedCmd("quick");
                         setTimeout(() => setCopiedCmd(null), 2500);
                       }}
-                      className="absolute right-2 top-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+                      className="absolute right-2.5 top-2.5 sm:top-3 p-2 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
                       title="Скопировать команду"
                     >
                       {copiedCmd === "quick" ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
@@ -617,14 +649,18 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* С установкой curl */}
-                <div className="space-y-1.5">
+                {/* 2. С установкой curl */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">2. С установкой curl (Ubuntu / Debian):</span>
-                    {copiedCmd === "curl" && <span className="text-xs text-emerald-400 font-semibold">Скопировано!</span>}
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-slate-700 text-slate-300 text-[11px] font-bold flex items-center justify-center">2</span>
+                      <span className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">С установкой curl (Ubuntu / Debian / CentOS)</span>
+                    </div>
+                    {copiedCmd === "curl" && <span className="text-xs text-emerald-400 font-semibold animate-pulse">Скопировано!</span>}
                   </div>
+                  <p className="text-xs text-slate-400">Если на новом сервере ещё не установлена утилита curl:</p>
                   <div className="relative group">
-                    <pre className="p-3 bg-black rounded-xl border border-white/10 font-mono text-[11px] sm:text-xs text-slate-200 overflow-x-auto whitespace-pre-wrap break-all select-all">
+                    <pre className="p-3.5 sm:p-4 bg-black rounded-xl border border-white/10 font-mono text-xs sm:text-sm text-slate-200 overflow-x-auto whitespace-pre-wrap break-all select-all">
                       {`sudo apt-get update && sudo apt-get install -y curl && curl -sL https://astrotest-delta.vercel.app/cli | bash`}
                     </pre>
                     <button
@@ -633,7 +669,7 @@ export default function App() {
                         setCopiedCmd("curl");
                         setTimeout(() => setCopiedCmd(null), 2500);
                       }}
-                      className="absolute right-2 top-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+                      className="absolute right-2.5 top-2.5 sm:top-3 p-2 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
                       title="Скопировать команду"
                     >
                       {copiedCmd === "curl" ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
@@ -641,14 +677,18 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Установка в систему */}
-                <div className="space-y-1.5">
+                {/* 3. Установка в систему */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">3. Установка утилиты в систему (/usr/local/bin):</span>
-                    {copiedCmd === "install" && <span className="text-xs text-emerald-400 font-semibold">Скопировано!</span>}
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-slate-700 text-slate-300 text-[11px] font-bold flex items-center justify-center">3</span>
+                      <span className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">Установка команды в систему (/usr/local/bin)</span>
+                    </div>
+                    {copiedCmd === "install" && <span className="text-xs text-emerald-400 font-semibold animate-pulse">Скопировано!</span>}
                   </div>
+                  <p className="text-xs text-slate-400">Устанавливает команду astrotest для повторного запуска в любой момент:</p>
                   <div className="relative group">
-                    <pre className="p-3 bg-black rounded-xl border border-white/10 font-mono text-[11px] sm:text-xs text-slate-200 overflow-x-auto whitespace-pre-wrap break-all select-all">
+                    <pre className="p-3.5 sm:p-4 bg-black rounded-xl border border-white/10 font-mono text-xs sm:text-sm text-slate-200 overflow-x-auto whitespace-pre-wrap break-all select-all">
                       {`curl -sL https://astrotest-delta.vercel.app/cli | sudo bash -s -- --install`}
                     </pre>
                     <button
@@ -657,41 +697,96 @@ export default function App() {
                         setCopiedCmd("install");
                         setTimeout(() => setCopiedCmd(null), 2500);
                       }}
-                      className="absolute right-2 top-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+                      className="absolute right-2.5 top-2.5 sm:top-3 p-2 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
                       title="Скопировать команду"
                     >
                       {copiedCmd === "install" ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    После этого на сервере можно запускать замер в любой момент просто командой <code className="text-blue-400 font-mono bg-white/5 px-1.5 py-0.5 rounded">astrotest</code>
+                  <p className="text-xs text-slate-400 mt-1">
+                    После установки команда доступна просто как: <code className="text-blue-400 font-mono bg-white/10 px-2 py-0.5 rounded">astrotest</code>
                   </p>
-                </div>
-
-                {/* Преимущества */}
-                <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2 text-xs">
-                  <div className="text-white font-semibold flex items-center gap-1.5">
-                    <Server className="w-4 h-4 text-blue-400" />
-                    <span>Что входит в замер:</span>
-                  </div>
-                  <ul className="space-y-1 text-slate-400 list-disc list-inside">
-                    <li>Точный замер пинга (Latency), скорости скачивания и отдачи</li>
-                    <li>Определение провайдера, внешнего IP и геолокации сервера</li>
-                    <li>Автоматическая генерация кликабельной ссылки на веб-итоги</li>
-                    <li>Мгновенная отправка отчёта в Telegram (если настроен бот)</li>
-                  </ul>
                 </div>
               </div>
 
-              {/* Закрыть */}
-              <button 
-                onClick={() => setIsCliModalOpen(false)}
-                className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-bold rounded-2xl transition-all shadow-lg shadow-blue-500/25 mt-5 text-sm"
-              >
-                Понятно
-              </button>
-            </motion.div>
-          </div>
+              {/* Интерактивный пример консольного вывода */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Пример вывода в консоли сервера:</span>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-[#07090e] overflow-hidden font-mono text-xs">
+                  <div className="px-4 py-2.5 bg-white/[0.04] border-b border-white/5 flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                    <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                    <div className="w-3 h-3 rounded-full bg-green-500/80" />
+                    <span className="text-[11px] text-slate-500 ml-2">root@server:~# astrotest</span>
+                  </div>
+                  <div className="p-4 sm:p-5 space-y-1 text-slate-300 overflow-x-auto leading-relaxed">
+                    <div className="text-blue-400 font-bold">🚀 Astrotest CLI — Тест скорости для Linux-серверов</div>
+                    <div className="text-slate-500 text-[11px]">--------------------------------------------------------------</div>
+                    <div>🏢 <span className="font-semibold text-white">Провайдер:</span>  <span className="text-emerald-400 font-bold">aurologic GmbH</span></div>
+                    <div>🌐 <span className="font-semibold text-white">IP-адрес:</span>   45.11.18.91</div>
+                    <div>🌍 <span className="font-semibold text-white">Локация:</span>    Helsinki, Finland 🇫🇮</div>
+                    <div>💻 <span className="font-semibold text-white">Система:</span>    Ubuntu 22.04 LTS (x86_64)</div>
+                    <div className="text-slate-500 text-[11px]">--------------------------------------------------------------</div>
+                    <div>⏱️  <span className="font-semibold text-white">Пинг (Latency):</span>      <span className="text-emerald-400 font-bold">14 ms</span></div>
+                    <div>📥 <span className="font-semibold text-white">Скачивание (Download):</span>  <span className="text-emerald-400 font-bold">840.5 Mbps</span></div>
+                    <div>📤 <span className="font-semibold text-white">Выгрузка (Upload):</span>      <span className="text-emerald-400 font-bold">412.3 Mbps</span></div>
+                    <div className="text-slate-500 text-[11px]">--------------------------------------------------------------</div>
+                    <div className="text-white font-bold">🌐 Результаты замера в Web (Astrotest):</div>
+                    <div className="text-blue-400 underline break-all">https://astrotest-delta.vercel.app/speedtest/eyJkb3dubG9hZCI6ODQwLjUs...</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Преимущества и возможности */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+                  <div className="font-semibold text-white text-sm flex items-center gap-2">
+                    <span className="text-blue-400">⚡</span> Без лишних зависимостей
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Использует только стандартные системные утилиты curl и bash. Никаких тяжёлых пакетов или Python.
+                  </p>
+                </div>
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+                  <div className="font-semibold text-white text-sm flex items-center gap-2">
+                    <span className="text-blue-400">🌐</span> Интерактивный Web-отчёт
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    По ссылке открывается полноценный интерфейс Astrotest с циферблатом, картой и кнопкой «Поделиться».
+                  </p>
+                </div>
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+                  <div className="font-semibold text-white text-sm flex items-center gap-2">
+                    <span className="text-blue-400">📱</span> Оповещения в Telegram
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Если настроен бот, сводка замера с сервера сразу отправляется в указанный Telegram-чат.
+                  </p>
+                </div>
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+                  <div className="font-semibold text-white text-sm flex items-center gap-2">
+                    <span className="text-blue-400">🐧</span> Любые Linux дистрибутивы
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Работает на Ubuntu, Debian, CentOS, RedHat, AlmaLinux, Rocky, Arch Linux и Alpine.
+                  </p>
+                </div>
+              </div>
+
+              {/* Кнопка закрытия */}
+              <div className="pt-2 pb-8">
+                <button 
+                  onClick={() => setIsCliModalOpen(false)}
+                  className="w-full py-4 bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-bold rounded-2xl transition-all shadow-lg shadow-blue-500/25 text-base flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                  <span>Вернуться к спидометру</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
