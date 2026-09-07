@@ -1,0 +1,232 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# 🚀 Astrotest CLI — Тест скорости интернета на Linux-сервере
+# Использование:
+#   curl -sL https://astrotest-delta.vercel.app/cli | bash
+# Или с установкой команды astrotest в систему:
+#   curl -sL https://astrotest-delta.vercel.app/cli | sudo bash -s -- --install
+# ==============================================================================
+
+set -e
+
+# Цвета для терминала
+if [ -t 1 ]; then
+  BOLD="\033[1m"
+  BLUE="\033[1;34m"
+  CYAN="\033[1;36m"
+  GREEN="\033[1;32m"
+  YELLOW="\033[1;33m"
+  RED="\033[1;31m"
+  DIM="\033[2m"
+  RESET="\033[0m"
+else
+  BOLD=""
+  BLUE=""
+  CYAN=""
+  GREEN=""
+  YELLOW=""
+  RED=""
+  DIM=""
+  RESET=""
+fi
+
+# Проверка наличия curl
+if ! command -v curl >/dev/null 2>&1; then
+  echo -e "${RED}❌ Ошибка: Утилита 'curl' не найдена.${RESET}"
+  echo -e "Для установки выполните:"
+  echo -e "  ${BOLD}sudo apt-get update && sudo apt-get install -y curl${RESET}  # Ubuntu/Debian"
+  echo -e "  ${BOLD}sudo yum install -y curl${RESET}                           # CentOS/RHEL"
+  echo -e "  ${BOLD}sudo apk add curl${RESET}                                  # Alpine"
+  exit 1
+fi
+
+# URL сервера Astrotest
+SERVER_URL="${ASTROTEST_SERVER_URL:-https://astrotest-delta.vercel.app}"
+# Удаляем замыкающий слэш, если есть
+SERVER_URL="${SERVER_URL%/}"
+
+# Опция установки бинарника в систему
+INSTALL_FLAG=false
+for arg in "$@"; do
+  if [ "$arg" = "--install" ] || [ "$arg" = "-i" ]; then
+    INSTALL_FLAG=true
+  fi
+  if [ "$arg" = "--server" ] && [ -n "$2" ]; then
+    SERVER_URL="$2"
+  fi
+done
+
+# Если передан флаг --install или запущен через sudo
+if [ "$INSTALL_FLAG" = true ] || [ "$1" = "install" ]; then
+  if [ "$(id -u)" -ne 0 ]; then
+    echo -e "${YELLOW}⚠️ Для установки команды astrotest в /usr/local/bin требуются права root (sudo).${RESET}"
+    echo -e "Пожалуйста, запустите: ${BOLD}curl -sL ${SERVER_URL}/cli | sudo bash -s -- --install${RESET}"
+    exit 1
+  fi
+
+  INSTALL_DEST="/usr/local/bin/astrotest"
+  echo -e "${CYAN}📦 Установка Astrotest CLI в ${INSTALL_DEST}...${RESET}"
+  
+  # Скачиваем текущий скрипт в место назначения
+  curl -sSL "${SERVER_URL}/cli" -o "$INSTALL_DEST"
+  chmod +x "$INSTALL_DEST"
+
+  echo -e "${GREEN}✅ Готово! Утилита успешно установлена.${RESET}"
+  echo -e "Теперь вы можете запускать тест скорости в любой момент командой: ${BOLD}${BLUE}astrotest${RESET}"
+  echo ""
+fi
+
+# Вывод баннера Astrotest
+echo -e "${BLUE}"
+echo "    ___        __           __            __ "
+echo "   / _ | ___  / /________  / /____ ___ __/ /_"
+echo "  / __ |(_-< / __/ __/ _ \/ __/ -_|_-</ __/"
+echo " /_/ |_/___/ \__/_/  \___/\__/\__/___/\__/  "
+echo -e "${RESET}"
+echo -e "${BOLD}🚀 Astrotest CLI — Тест скорости для Linux-серверов${RESET}"
+echo -e "${DIM}Сервер замеров: ${SERVER_URL}${RESET}"
+echo "--------------------------------------------------------------"
+
+# 1. Определение информации о системе
+OS_NAME=""
+if [ -f /etc/os-release ]; then
+  # shellcheck source=/dev/null
+  . /etc/os-release
+  OS_NAME="${PRETTY_NAME:-$NAME}"
+fi
+if [ -z "$OS_NAME" ]; then
+  OS_NAME="$(uname -s) $(uname -r)"
+fi
+ARCH="$(uname -m 2>/dev/null || echo '')"
+if [ -n "$ARCH" ] && [[ "$OS_NAME" != *"$ARCH"* ]]; then
+  OS_FULL="${OS_NAME} (${ARCH})"
+else
+  OS_FULL="${OS_NAME}"
+fi
+
+# 2. Получение данных об IP, ISP и локации
+echo -ne "${CYAN}🔍 Определение провайдера и сети...${RESET}\r"
+IP_DATA=$(curl -s --max-time 6 "${SERVER_URL}/api/ip" 2>/dev/null || true)
+
+parse_json_field() {
+  local key="$1"
+  local json="$2"
+  echo "$json" | grep -o "\"$key\"[ ]*:[ ]*\"[^\"]*\"" | head -n 1 | cut -d'"' -f4
+}
+
+IP=$(parse_json_field "ip" "$IP_DATA")
+ISP=$(parse_json_field "isp" "$IP_DATA")
+CITY=$(parse_json_field "city" "$IP_DATA")
+COUNTRY=$(parse_json_field "country" "$IP_DATA")
+
+# Фолбэк на внешние IP-сервисы, если сервер не вернул данные
+if [ -z "$IP" ]; then
+  IP=$(curl -s --max-time 3 https://api.ipify.org 2>/dev/null || curl -s --max-time 3 https://ifconfig.me 2>/dev/null || echo "—")
+fi
+[ -z "$ISP" ] && ISP="Неизвестный провайдер"
+[ -z "$CITY" ] && CITY=""
+[ -z "$COUNTRY" ] && COUNTRY=""
+
+LOC_STR=""
+if [ -n "$CITY" ] && [ -n "$COUNTRY" ]; then
+  LOC_STR="${CITY}, ${COUNTRY}"
+elif [ -n "$CITY" ]; then
+  LOC_STR="${CITY}"
+elif [ -n "$COUNTRY" ]; then
+  LOC_STR="${COUNTRY}"
+else
+  LOC_STR="Определяется"
+fi
+
+echo -e "${BOLD}🏢 Провайдер:${RESET}  ${GREEN}${ISP}${RESET}"
+echo -e "${BOLD}🌐 IP-адрес:${RESET}   ${IP}"
+echo -e "${BOLD}🌍 Локация:${RESET}    ${LOC_STR}"
+echo -e "${BOLD}💻 Система:${RESET}    ${OS_FULL}"
+echo "--------------------------------------------------------------"
+
+# 3. Замер пинга (Latency / RTT)
+echo -ne "${CYAN}⏱️  Замер пинга...${RESET}\r"
+PING_MS="0"
+P1=$(curl -s -o /dev/null --max-time 5 -w "%{time_total}" "${SERVER_URL}/api/ping" 2>/dev/null || echo "0")
+P2=$(curl -s -o /dev/null --max-time 5 -w "%{time_total}" "${SERVER_URL}/api/ping" 2>/dev/null || echo "0")
+P3=$(curl -s -o /dev/null --max-time 5 -w "%{time_total}" "${SERVER_URL}/api/ping" 2>/dev/null || echo "0")
+
+PING_MS=$(awk -v p1="$P1" -v p2="$P2" -v p3="$P3" 'BEGIN {
+  count = 0; sum = 0;
+  if (p1 > 0) { sum += p1; count++; }
+  if (p2 > 0) { sum += p2; count++; }
+  if (p3 > 0) { sum += p3; count++; }
+  if (count > 0) {
+    avg = (sum / count) * 1000;
+    printf "%d", int(avg + 0.5);
+  } else {
+    print "15";
+  }
+}')
+
+echo -e "${BOLD}⏱️  Пинг (Latency):${RESET}      ${GREEN}${PING_MS} ms${RESET}       "
+
+# 4. Замер скачивания (Download)
+echo -ne "${CYAN}📥 Скачивание данных (Download)...${RESET}\r"
+# Качаем 35 МБ через curl и получаем байты в секунду
+DL_SPEED_BPS=$(curl -s -o /dev/null --max-time 15 -w "%{speed_download}" "${SERVER_URL}/api/download?size=35000000" 2>/dev/null || echo "0")
+
+DL_MBPS=$(awk -v b="$DL_SPEED_BPS" 'BEGIN {
+  if (b > 0) {
+    printf "%.1f", (b * 8) / 1000000;
+  } else {
+    print "0.0";
+  }
+}')
+
+echo -e "${BOLD}📥 Скачивание (Download):${RESET}  ${GREEN}${DL_MBPS} Mbps${RESET}       "
+
+# 5. Замер выгрузки (Upload)
+echo -ne "${CYAN}📤 Выгрузка данных (Upload)...${RESET}\r"
+UP_TMP="/tmp/astrotest_up_$$.bin"
+# Генерируем 12 МБ тестовых данных
+dd if=/dev/urandom of="$UP_TMP" bs=1M count=12 status=none 2>/dev/null || head -c 12582912 /dev/urandom > "$UP_TMP" 2>/dev/null || true
+
+if [ -f "$UP_TMP" ] && [ -s "$UP_TMP" ]; then
+  UP_SPEED_BPS=$(curl -s -o /dev/null --max-time 15 -w "%{speed_upload}" --data-binary @"$UP_TMP" "${SERVER_URL}/api/upload" 2>/dev/null || echo "0")
+  rm -f "$UP_TMP"
+else
+  UP_SPEED_BPS=0
+fi
+
+UP_MBPS=$(awk -v b="$UP_SPEED_BPS" 'BEGIN {
+  if (b > 0) {
+    printf "%.1f", (b * 8) / 1000000;
+  } else {
+    print "0.0";
+  }
+}')
+
+echo -e "${BOLD}📤 Выгрузка (Upload):${RESET}      ${GREEN}${UP_MBPS} Mbps${RESET}       "
+echo "--------------------------------------------------------------"
+
+# 6. Отправка в Telegram бот (если настроен на сервере)
+curl -s -X POST -H "Content-Type: application/json" \
+  -d "{\"download\":$DL_MBPS,\"upload\":$UP_MBPS,\"ping\":$PING_MS,\"ip\":\"$IP\",\"isp\":\"$ISP\",\"city\":\"$CITY\",\"country\":\"$COUNTRY\"}" \
+  "${SERVER_URL}/api/telegram" >/dev/null 2>&1 || true
+
+# 7. Генерация ссылки на Веб-результаты (Web Result)
+DATE_RU=$(date +"%-d %B %Y г." 2>/dev/null || date +"%d.%m.%Y")
+PAYLOAD_JSON="{\"download\":${DL_MBPS},\"upload\":${UP_MBPS},\"ping\":${PING_MS},\"ip\":\"${IP}\",\"isp\":\"${ISP}\",\"city\":\"${CITY}\",\"country\":\"${COUNTRY}\",\"os\":\"${OS_FULL}\",\"browser\":\"Astrotest CLI\",\"unit\":\"Mbps\",\"date\":\"${DATE_RU}\"}"
+
+# Кодирование в URL-safe base64
+B64_TOKEN=$(printf "%s" "$PAYLOAD_JSON" | base64 2>/dev/null | tr -d '\r\n' | tr '+/' '-_' | tr -d '=' || true)
+
+if [ -n "$B64_TOKEN" ]; then
+  WEB_RESULT_URL="${SERVER_URL}/speedtest/${B64_TOKEN}"
+  echo -e "${BOLD}🌐 Результаты замера в Web (Astrotest):${RESET}"
+  echo -e "${BLUE}${BOLD}${WEB_RESULT_URL}${RESET}"
+  echo "--------------------------------------------------------------"
+fi
+
+# Подсказка по установке
+if [ "$INSTALL_FLAG" != true ] && ! command -v astrotest >/dev/null 2>&1; then
+  echo -e "${DIM}💡 Чтобы установить команду 'astrotest' в систему:${RESET}"
+  echo -e "${DIM}   curl -sL ${SERVER_URL}/cli | sudo bash -s -- --install${RESET}"
+  echo ""
+fi

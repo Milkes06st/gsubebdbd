@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useSpring, useTransform } from "framer-motion";
-import { Play, RotateCcw, Settings, MapPin, Share2, Check } from "lucide-react";
+import { Play, RotateCcw, Settings, MapPin, Share2, Check, Terminal, Copy, X, Server } from "lucide-react";
 import { fetchNetworkInfo, measurePing, measureDownloadSpeed, measureUploadSpeed, NetworkInfo } from "./lib/speedTest";
 import { cn } from "./lib/utils";
 
@@ -201,6 +201,8 @@ export default function App() {
   const [unit, setUnit] = useState<SpeedUnit>("Mbps");
   const [clientSystem, setClientSystem] = useState<{ os: string; browser: string }>(() => detectClientSystem());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCliModalOpen, setIsCliModalOpen] = useState(false);
+  const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
 
   // Sharing & Shared Link state
   const [isSharedView, setIsSharedView] = useState(false);
@@ -525,6 +527,24 @@ export default function App() {
                     ))}
                   </div>
                 </div>
+
+                {/* Серверный CLI */}
+                <div className="pt-2 border-t border-white/10">
+                  <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Тест на Linux-сервере (CLI)</label>
+                  <button
+                    onClick={() => {
+                      setIsSettingsOpen(false);
+                      setIsCliModalOpen(true);
+                    }}
+                    className="w-full py-3 px-4 rounded-xl bg-[#161922] hover:bg-[#1f2330] border border-white/5 flex items-center justify-between text-left transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Terminal className="w-4 h-4 text-blue-400" />
+                      <span className="text-xs sm:text-sm font-semibold text-white">Команды для терминала сервера</span>
+                    </div>
+                    <span className="text-xs text-blue-400 font-medium">Открыть →</span>
+                  </button>
+                </div>
               </div>
 
               {/* Кнопка Готово */}
@@ -533,6 +553,142 @@ export default function App() {
                 className="w-full py-3.5 sm:py-4 bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-bold rounded-2xl transition-all shadow-lg shadow-blue-500/25 mt-2 text-base"
               >
                 Готово
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Модальное окно CLI для серверов */}
+      <AnimatePresence>
+        {isCliModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#0b0e14] border border-white/10 rounded-3xl p-5 sm:p-6 w-full max-w-lg shadow-2xl text-left relative max-h-[92vh] overflow-y-auto"
+            >
+              {/* Заголовок */}
+              <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <Terminal className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white tracking-wide">Astrotest для Linux-серверов</h3>
+                    <p className="text-xs text-slate-400">Запуск замера из консоли с веб-итогами</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsCliModalOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs sm:text-sm text-slate-300">
+                <p className="text-slate-300 leading-relaxed">
+                  Проверьте реальную пропускную способность вашего VPS или выделенного сервера без установки лишнего ПО. Скрипт выдаст результаты в консоль и сформирует ссылку на отчёт в веб-интерфейсе Astrotest.
+                </p>
+
+                {/* Быстрый запуск */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-blue-400">1. Быстрый запуск (одна команда):</span>
+                    {copiedCmd === "quick" && <span className="text-xs text-emerald-400 font-semibold">Скопировано!</span>}
+                  </div>
+                  <div className="relative group">
+                    <pre className="p-3 bg-black rounded-xl border border-white/10 font-mono text-[11px] sm:text-xs text-blue-300 overflow-x-auto whitespace-pre-wrap break-all select-all">
+                      {`curl -sL https://astrotest-delta.vercel.app/cli | bash`}
+                    </pre>
+                    <button
+                      onClick={() => {
+                        copyToClipboard(`curl -sL https://astrotest-delta.vercel.app/cli | bash`);
+                        setCopiedCmd("quick");
+                        setTimeout(() => setCopiedCmd(null), 2500);
+                      }}
+                      className="absolute right-2 top-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+                      title="Скопировать команду"
+                    >
+                      {copiedCmd === "quick" ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* С установкой curl */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">2. С установкой curl (Ubuntu / Debian):</span>
+                    {copiedCmd === "curl" && <span className="text-xs text-emerald-400 font-semibold">Скопировано!</span>}
+                  </div>
+                  <div className="relative group">
+                    <pre className="p-3 bg-black rounded-xl border border-white/10 font-mono text-[11px] sm:text-xs text-slate-200 overflow-x-auto whitespace-pre-wrap break-all select-all">
+                      {`sudo apt-get update && sudo apt-get install -y curl && curl -sL https://astrotest-delta.vercel.app/cli | bash`}
+                    </pre>
+                    <button
+                      onClick={() => {
+                        copyToClipboard(`sudo apt-get update && sudo apt-get install -y curl && curl -sL https://astrotest-delta.vercel.app/cli | bash`);
+                        setCopiedCmd("curl");
+                        setTimeout(() => setCopiedCmd(null), 2500);
+                      }}
+                      className="absolute right-2 top-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+                      title="Скопировать команду"
+                    >
+                      {copiedCmd === "curl" ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Установка в систему */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">3. Установка утилиты в систему (/usr/local/bin):</span>
+                    {copiedCmd === "install" && <span className="text-xs text-emerald-400 font-semibold">Скопировано!</span>}
+                  </div>
+                  <div className="relative group">
+                    <pre className="p-3 bg-black rounded-xl border border-white/10 font-mono text-[11px] sm:text-xs text-slate-200 overflow-x-auto whitespace-pre-wrap break-all select-all">
+                      {`curl -sL https://astrotest-delta.vercel.app/cli | sudo bash -s -- --install`}
+                    </pre>
+                    <button
+                      onClick={() => {
+                        copyToClipboard(`curl -sL https://astrotest-delta.vercel.app/cli | sudo bash -s -- --install`);
+                        setCopiedCmd("install");
+                        setTimeout(() => setCopiedCmd(null), 2500);
+                      }}
+                      className="absolute right-2 top-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+                      title="Скопировать команду"
+                    >
+                      {copiedCmd === "install" ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    После этого на сервере можно запускать замер в любой момент просто командой <code className="text-blue-400 font-mono bg-white/5 px-1.5 py-0.5 rounded">astrotest</code>
+                  </p>
+                </div>
+
+                {/* Преимущества */}
+                <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2 text-xs">
+                  <div className="text-white font-semibold flex items-center gap-1.5">
+                    <Server className="w-4 h-4 text-blue-400" />
+                    <span>Что входит в замер:</span>
+                  </div>
+                  <ul className="space-y-1 text-slate-400 list-disc list-inside">
+                    <li>Точный замер пинга (Latency), скорости скачивания и отдачи</li>
+                    <li>Определение провайдера, внешнего IP и геолокации сервера</li>
+                    <li>Автоматическая генерация кликабельной ссылки на веб-итоги</li>
+                    <li>Мгновенная отправка отчёта в Telegram (если настроен бот)</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Закрыть */}
+              <button 
+                onClick={() => setIsCliModalOpen(false)}
+                className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-bold rounded-2xl transition-all shadow-lg shadow-blue-500/25 mt-5 text-sm"
+              >
+                Понятно
               </button>
             </motion.div>
           </div>
@@ -550,13 +706,23 @@ export default function App() {
             <AstroLogo className="h-6 w-6 sm:h-7 sm:w-7 text-blue-500" />
             <span>Astro<span className="text-blue-500">test</span></span>
           </div>
-          <button 
-            onClick={() => setIsSettingsOpen(true)}
-            className="p-1.5 text-slate-400 hover:text-white transition-colors"
-            aria-label="Настройки"
-          >
-            <Settings className="w-5 h-5 text-slate-400 hover:text-slate-200" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setIsCliModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 hover:text-white transition-all border border-white/5 active:scale-95"
+              title="Замер на Linux-сервере (CLI)"
+            >
+              <Terminal className="w-3.5 h-3.5 text-blue-400" />
+              <span>Сервер CLI</span>
+            </button>
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-1.5 sm:p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all border border-white/5 active:scale-95"
+              aria-label="Настройки"
+            >
+              <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 hover:text-slate-200" />
+            </button>
+          </div>
         </motion.div>
 
         {/* Floating Toast Notification */}

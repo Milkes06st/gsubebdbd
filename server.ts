@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { randomBytes } from "crypto";
 
@@ -275,6 +276,28 @@ async function startServer() {
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch IP info" });
     }
+  });
+
+  // CLI script endpoint for Linux servers (curl -sL <host>/cli | bash)
+  app.get(["/cli", "/cli.sh", "/install.sh"], (req, res) => {
+    try {
+      const cliPath = path.join(process.cwd(), "public", "cli");
+      if (fs.existsSync(cliPath)) {
+        let content = fs.readFileSync(cliPath, "utf-8");
+        const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+        const host = req.headers['x-forwarded-host'] || req.headers.host || 'astrotest-delta.vercel.app';
+        const currentOrigin = `${proto}://${host}`;
+        content = content.replace(
+          /SERVER_URL="\$\{ASTROTEST_SERVER_URL:-https:\/\/astrotest-delta\.vercel\.app\}"/g,
+          `SERVER_URL="\${ASTROTEST_SERVER_URL:-${currentOrigin}}"`
+        );
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        return res.send(content);
+      }
+    } catch (e) {
+      console.error("Failed to serve CLI script:", e);
+    }
+    res.status(404).send("CLI script not found");
   });
 
   // Serve static public assets (favicons, icons, manifest)
