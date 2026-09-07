@@ -87,6 +87,17 @@ echo -e "${BOLD}🚀 Astrotest CLI — Тест скорости для Linux-с
 echo -e "${DIM}Сервер замеров: ${SERVER_URL}${RESET}"
 echo "--------------------------------------------------------------"
 
+# Запуск анализа геолокации и сервисов (ipregion) параллельно в фоне
+GEO_TMP="/tmp/astrotest_geo_$$.json"
+GEO_PID=""
+if command -v wget >/dev/null 2>&1; then
+  (wget -qO- https://ipregion.xyz 2>/dev/null | bash -s -- -j > "$GEO_TMP" 2>/dev/null || true) &
+  GEO_PID=$!
+elif command -v curl >/dev/null 2>&1; then
+  (curl -sL https://ipregion.xyz 2>/dev/null | bash -s -- -j > "$GEO_TMP" 2>/dev/null || true) &
+  GEO_PID=$!
+fi
+
 # 1. Определение информации о системе
 OS_NAME=""
 if [ -f /etc/os-release ]; then
@@ -106,20 +117,50 @@ fi
 
 # 2. Получение данных об IP, ISP и локации
 echo -ne "${CYAN}🔍 Определение провайдера и сети...${RESET}\r"
-IP_DATA=$(curl -s --max-time 6 "${SERVER_URL}/api/ip" 2>/dev/null || true)
+IP=""
+ISP=""
+CITY=""
+COUNTRY=""
 
-parse_json_field() {
-  local key="$1"
-  local json="$2"
-  echo "$json" | grep -o "\"$key\"[ ]*:[ ]*\"[^\"]*\"" | head -n 1 | cut -d'"' -f4
-}
+# Способ 1: через python3 (если установлен — даёт самый надёжный разбор UTF-8/Emoji)
+if command -v python3 >/dev/null 2>&1; then
+  eval "$(python3 -c '
+import sys, urllib.request, json
+try:
+    req = urllib.request.Request("https://ipwho.is/", headers={"User-Agent": "Astrotest-CLI"})
+    with urllib.request.urlopen(req, timeout=4) as r:
+        d = json.loads(r.read().decode("utf-8", "ignore"))
+        if d.get("success"):
+            flag = d.get("flag", {}).get("emoji", "")
+            country = d.get("country", "")
+            if flag: country += " " + flag
+            isp = d.get("connection", {}).get("isp") or d.get("connection", {}).get("org") or ""
+            print("IP=\"%s\"" % d.get("ip", ""))
+            print("ISP=\"%s\"" % isp)
+            print("CITY=\"%s\"" % d.get("city", ""))
+            print("COUNTRY=\"%s\"" % country)
+            sys.exit(0)
+except Exception:
+    pass
+sys.exit(1)
+' 2>/dev/null)" || true
+fi
 
-IP=$(parse_json_field "ip" "$IP_DATA")
-ISP=$(parse_json_field "isp" "$IP_DATA")
-CITY=$(parse_json_field "city" "$IP_DATA")
-COUNTRY=$(parse_json_field "country" "$IP_DATA")
+# Способ 2: если python3 нет, используем curl с разбором json через grep/awk
+if [ -z "$IP" ] || [ -z "$ISP" ]; then
+  IP_RAW=$(curl -s --max-time 4 "https://ipwho.is/" 2>/dev/null || true)
+  if [ -n "$IP_RAW" ]; then
+    [ -z "$IP" ] && IP=$(echo "$IP_RAW" | grep -o '"ip"[ ]*:[ ]*"[^"]*"' | head -n 1 | cut -d'"' -f4)
+    [ -z "$CITY" ] && CITY=$(echo "$IP_RAW" | grep -o '"city"[ ]*:[ ]*"[^"]*"' | head -n 1 | cut -d'"' -f4)
+    [ -z "$COUNTRY" ] && COUNTRY=$(echo "$IP_RAW" | grep -o '"country"[ ]*:[ ]*"[^"]*"' | head -n 1 | cut -d'"' -f4)
+    EMOJI=$(echo "$IP_RAW" | grep -o '"emoji"[ ]*:[ ]*"[^"]*"' | head -n 1 | cut -d'"' -f4)
+    [ -n "$EMOJI" ] && [ -n "$COUNTRY" ] && COUNTRY="${COUNTRY} ${EMOJI}"
+    [ -z "$ISP" ] && ISP=$(echo "$IP_RAW" | grep -o '"isp"[ ]*:[ ]*"[^"]*"' | head -n 1 | cut -d'"' -f4)
+    [ -z "$ISP" ] && ISP=$(echo "$IP_RAW" | grep -o '"org"[ ]*:[ ]*"[^"]*"' | head -n 1 | cut -d'"' -f4)
+  fi
+fi
 
-# Фолбэк на внешние IP-сервисы, если сервер не вернул данные
+# Способ 3: фолбэк на сервер Astrotest или внешние сервисы
 if [ -z "$IP" ]; then
   IP=$(curl -s --max-time 3 https://api.ipify.org 2>/dev/null || curl -s --max-time 3 https://ifconfig.me 2>/dev/null || echo "—")
 fi
@@ -146,19 +187,22 @@ echo "--------------------------------------------------------------"
 
 # 3. Замер пинга (Latency / RTT)
 echo -ne "${CYAN}⏱️  Замер пинга...${RESET}\r"
-PING_MS="0"
-P1=$(curl -s -o /dev/null --max-time 5 -w "%{time_total}" "${SERVER_URL}/api/ping" 2>/dev/null || echo "0")
-P2=$(curl -s -o /dev/null --max-time 5 -w "%{time_total}" "${SERVER_URL}/api/ping" 2>/dev/null || echo "0")
-P3=$(curl -s -o /dev/null --max-time 5 -w "%{time_total}" "${SERVER_URL}/api/ping" 2>/dev/null || echo "0")
+# Прогрев TCP-сессии
+curl -s -o /dev/null --max-time 3 "https://speed.cloudflare.com/__down?bytes=0" 2>/dev/null || true
+
+P1=$(curl -s -o /dev/null --max-time 4 -w "%{time_connect}" "https://speed.cloudflare.com/__down?bytes=0" 2>/dev/null || echo "0")
+P2=$(curl -s -o /dev/null --max-time 4 -w "%{time_connect}" "https://speed.cloudflare.com/__down?bytes=0" 2>/dev/null || echo "0")
+P3=$(curl -s -o /dev/null --max-time 4 -w "%{time_connect}" "https://speed.cloudflare.com/__down?bytes=0" 2>/dev/null || echo "0")
 
 PING_MS=$(awk -v p1="$P1" -v p2="$P2" -v p3="$P3" 'BEGIN {
-  count = 0; sum = 0;
-  if (p1 > 0) { sum += p1; count++; }
-  if (p2 > 0) { sum += p2; count++; }
-  if (p3 > 0) { sum += p3; count++; }
-  if (count > 0) {
-    avg = (sum / count) * 1000;
-    printf "%d", int(avg + 0.5);
+  count = 0; min = 999999;
+  if (p1 > 0) { if (p1 < min) min = p1; count++; }
+  if (p2 > 0) { if (p2 < min) min = p2; count++; }
+  if (p3 > 0) { if (p3 < min) min = p3; count++; }
+  if (count > 0 && min < 999999) {
+    ms = min * 1000;
+    if (ms < 1) ms = 1;
+    printf "%d", int(ms + 0.5);
   } else {
     print "15";
   }
@@ -168,8 +212,13 @@ echo -e "${BOLD}⏱️  Пинг (Latency):${RESET}      ${GREEN}${PING_MS} ms${
 
 # 4. Замер скачивания (Download)
 echo -ne "${CYAN}📥 Скачивание данных (Download)...${RESET}\r"
-# Качаем 35 МБ через curl и получаем байты в секунду
-DL_SPEED_BPS=$(curl -s -o /dev/null --max-time 15 -w "%{speed_download}" "${SERVER_URL}/api/download?size=35000000" 2>/dev/null || echo "0")
+# Качаем через глобальную сеть Cloudflare CDN (50 MB)
+DL_SPEED_BPS=$(curl -s -L -o /dev/null --max-time 15 -w "%{speed_download}" "https://speed.cloudflare.com/__down?bytes=50000000" 2>/dev/null || echo "0")
+
+# Если по какой-то причине Cloudflare не ответил, пробуем через сервер Astrotest
+if [ -z "$DL_SPEED_BPS" ] || [ "$DL_SPEED_BPS" = "0" ] || [ "${DL_SPEED_BPS%.*}" = "0" ]; then
+  DL_SPEED_BPS=$(curl -s -L -o /dev/null --max-time 15 -w "%{speed_download}" "${SERVER_URL}/api/download?size=35000000" 2>/dev/null || echo "0")
+fi
 
 DL_MBPS=$(awk -v b="$DL_SPEED_BPS" 'BEGIN {
   if (b > 0) {
@@ -184,14 +233,18 @@ echo -e "${BOLD}📥 Скачивание (Download):${RESET}  ${GREEN}${DL_MBPS
 # 5. Замер выгрузки (Upload)
 echo -ne "${CYAN}📤 Выгрузка данных (Upload)...${RESET}\r"
 UP_TMP="/tmp/astrotest_up_$$.bin"
-# Генерируем 12 МБ тестовых данных
-dd if=/dev/urandom of="$UP_TMP" bs=1M count=12 status=none 2>/dev/null || head -c 12582912 /dev/urandom > "$UP_TMP" 2>/dev/null || true
+# Генерируем 16 МБ тестовых данных
+head -c 16777216 /dev/urandom > "$UP_TMP" 2>/dev/null || dd if=/dev/urandom of="$UP_TMP" bs=1M count=16 status=none 2>/dev/null || true
 
+UP_SPEED_BPS=0
 if [ -f "$UP_TMP" ] && [ -s "$UP_TMP" ]; then
-  UP_SPEED_BPS=$(curl -s -o /dev/null --max-time 15 -w "%{speed_upload}" --data-binary @"$UP_TMP" "${SERVER_URL}/api/upload" 2>/dev/null || echo "0")
+  # Выгрузка через Cloudflare Speedtest CDN
+  UP_SPEED_BPS=$(curl -s -o /dev/null --max-time 12 -w "%{speed_upload}" --data-binary @"$UP_TMP" "https://speed.cloudflare.com/__up" 2>/dev/null || echo "0")
+  # Фолбэк на сервер Astrotest
+  if [ -z "$UP_SPEED_BPS" ] || [ "$UP_SPEED_BPS" = "0" ] || [ "${UP_SPEED_BPS%.*}" = "0" ]; then
+    UP_SPEED_BPS=$(curl -s -o /dev/null --max-time 12 -w "%{speed_upload}" --data-binary @"$UP_TMP" "${SERVER_URL}/api/upload" 2>/dev/null || echo "0")
+  fi
   rm -f "$UP_TMP"
-else
-  UP_SPEED_BPS=0
 fi
 
 UP_MBPS=$(awk -v b="$UP_SPEED_BPS" 'BEGIN {
@@ -210,9 +263,59 @@ curl -s -X POST -H "Content-Type: application/json" \
   -d "{\"download\":$DL_MBPS,\"upload\":$UP_MBPS,\"ping\":$PING_MS,\"ip\":\"$IP\",\"isp\":\"$ISP\",\"city\":\"$CITY\",\"country\":\"$COUNTRY\"}" \
   "${SERVER_URL}/api/telegram" >/dev/null 2>&1 || true
 
-# 7. Генерация ссылки на Веб-результаты (Web Result)
+# 7. Завершение сбора геолокации и генерация ссылок на результаты
+GEO_B64_TOKEN=""
+if [ -n "$GEO_PID" ]; then
+  if kill -0 "$GEO_PID" 2>/dev/null; then
+    echo -ne "${CYAN}🌍 Завершение анализа геолокации сервисов...${RESET}\r"
+    for i in $(seq 1 12); do
+      if ! kill -0 "$GEO_PID" 2>/dev/null; then
+        break
+      fi
+      sleep 0.5
+    done
+  fi
+  kill "$GEO_PID" 2>/dev/null || true
+fi
+
+if [ -f "$GEO_TMP" ] && [ -s "$GEO_TMP" ]; then
+  if command -v python3 >/dev/null 2>&1; then
+    GEO_B64_TOKEN=$(python3 -c '
+import sys, json, base64
+try:
+    with open("'"$GEO_TMP"'", "r") as f:
+        data = json.load(f)
+    min_data = {
+        "ip4": data.get("ipv4") or "'"$IP"'",
+        "ip6": data.get("ipv6") or "",
+        "isp": "'"$ISP"'",
+        "city": "'"$CITY"'",
+        "country": "'"$COUNTRY"'",
+        "date": "'"$DATE_RU"'",
+        "custom": [{"s": i.get("service",""), "v4": i.get("ipv4"), "v6": i.get("ipv6")} for i in data.get("results",{}).get("custom",[]) if i.get("ipv4") or i.get("ipv6")],
+        "primary": [{"s": i.get("service",""), "v4": i.get("ipv4"), "v6": i.get("ipv6")} for i in data.get("results",{}).get("primary",[]) if i.get("ipv4") or i.get("ipv6")],
+        "cdn": [{"s": i.get("service",""), "v4": i.get("ipv4"), "v6": i.get("ipv6")} for i in data.get("results",{}).get("cdn",[]) if i.get("ipv4") or i.get("ipv6")]
+    }
+    dumped = json.dumps(min_data, separators=(",", ":"))
+    b64 = base64.b64encode(dumped.encode("utf-8")).decode("ascii").replace("+", "-").replace("/", "_").rstrip("=")
+    print(b64)
+except Exception:
+    pass
+' 2>/dev/null || true)
+  fi
+
+  if [ -z "$GEO_B64_TOKEN" ]; then
+    GEO_B64_TOKEN=$(base64 -w 0 "$GEO_TMP" 2>/dev/null | tr '+/' '-_' | tr -d '=\r\n' || true)
+  fi
+  rm -f "$GEO_TMP"
+fi
+
 DATE_RU=$(date +"%-d %B %Y г." 2>/dev/null || date +"%d.%m.%Y")
-PAYLOAD_JSON="{\"download\":${DL_MBPS},\"upload\":${UP_MBPS},\"ping\":${PING_MS},\"ip\":\"${IP}\",\"isp\":\"${ISP}\",\"city\":\"${CITY}\",\"country\":\"${COUNTRY}\",\"os\":\"${OS_FULL}\",\"browser\":\"Astrotest CLI\",\"unit\":\"Mbps\",\"date\":\"${DATE_RU}\"}"
+if [ -n "$GEO_B64_TOKEN" ]; then
+  PAYLOAD_JSON="{\"download\":${DL_MBPS},\"upload\":${UP_MBPS},\"ping\":${PING_MS},\"ip\":\"${IP}\",\"isp\":\"${ISP}\",\"city\":\"${CITY}\",\"country\":\"${COUNTRY}\",\"os\":\"${OS_FULL}\",\"browser\":\"Astrotest CLI\",\"unit\":\"Mbps\",\"date\":\"${DATE_RU}\",\"geo\":\"${GEO_B64_TOKEN}\"}"
+else
+  PAYLOAD_JSON="{\"download\":${DL_MBPS},\"upload\":${UP_MBPS},\"ping\":${PING_MS},\"ip\":\"${IP}\",\"isp\":\"${ISP}\",\"city\":\"${CITY}\",\"country\":\"${COUNTRY}\",\"os\":\"${OS_FULL}\",\"browser\":\"Astrotest CLI\",\"unit\":\"Mbps\",\"date\":\"${DATE_RU}\"}"
+fi
 
 # Кодирование в URL-safe base64
 B64_TOKEN=$(printf "%s" "$PAYLOAD_JSON" | base64 2>/dev/null | tr -d '\r\n' | tr '+/' '-_' | tr -d '=' || true)
@@ -221,8 +324,14 @@ if [ -n "$B64_TOKEN" ]; then
   WEB_RESULT_URL="${SERVER_URL}/speedtest/${B64_TOKEN}"
   echo -e "${BOLD}🌐 Результаты замера в Web (Astrotest):${RESET}"
   echo -e "${BLUE}${BOLD}${WEB_RESULT_URL}${RESET}"
-  echo "--------------------------------------------------------------"
 fi
+
+if [ -n "$GEO_B64_TOKEN" ]; then
+  GEO_RESULT_URL="${SERVER_URL}/geo/${GEO_B64_TOKEN}"
+  echo -e "${BOLD}🌍 Геолокация сервисов и стримингов (Geo):${RESET}"
+  echo -e "${CYAN}${BOLD}${GEO_RESULT_URL}${RESET}"
+fi
+echo "--------------------------------------------------------------"
 
 # Подсказка по установке
 if [ "$INSTALL_FLAG" != true ] && ! command -v astrotest >/dev/null 2>&1; then

@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence, useSpring, useTransform } from "framer-motion";
-import { Play, RotateCcw, Settings, MapPin, Share2, Check, Terminal, Copy, X, Server, ArrowLeft } from "lucide-react";
+import { Play, RotateCcw, Settings, MapPin, Share2, Check, Terminal, Copy, X, Server, ArrowLeft, Zap, Globe, Send, Cpu, Download, Upload, Gauge, Laptop, Building2, ExternalLink } from "lucide-react";
 import { fetchNetworkInfo, measurePing, measureDownloadSpeed, measureUploadSpeed, NetworkInfo } from "./lib/speedTest";
+import { decodeGeoBase64, encodeGeoBase64, SharedGeoData } from "./lib/geoData";
+import { GeoReportView } from "./components/GeoReportView";
 import { cn } from "./lib/utils";
 
 type TestPhase = "idle" | "pinging" | "downloading" | "uploading" | "done";
@@ -208,16 +210,46 @@ export default function App() {
   const [isSharedView, setIsSharedView] = useState(false);
   const [sharedMeta, setSharedMeta] = useState<{ date?: string } | null>(null);
   const [copiedToast, setCopiedToast] = useState(false);
+  const [activeResultTab, setActiveResultTab] = useState<'speed' | 'geo'>('speed');
+  const [geoData, setGeoData] = useState<SharedGeoData | null>(null);
 
   useEffect(() => {
     if (window.location.pathname.toLowerCase() === '/boost100') {
       setIsBoostMode(true);
     }
 
-    // Check for shared results in URL (/speedtest/:b64 or ?result=:b64 or #speedtest/:b64)
     const pathname = window.location.pathname;
-    const speedtestMatch = pathname.match(/\/speedtest\/([A-Za-z0-9+/=_-]+)/i);
     const searchParams = new URLSearchParams(window.location.search);
+
+    // 1. Проверка на Geo отчёт в URL (/geo/:b64 или /Geo/:b64 или ?geo=:b64 или #geo/:b64)
+    const geoMatch = pathname.match(/\/(?:geo|Geo)\/([A-Za-z0-9+/=_-]+)/i);
+    const queryGeo = searchParams.get("geo");
+    const hashGeoMatch = window.location.hash.match(/#\/?(?:geo|Geo)\/([A-Za-z0-9+/=_-]+)/i);
+
+    const rawGeoB64 = geoMatch?.[1] || queryGeo || hashGeoMatch?.[1];
+    if (rawGeoB64) {
+      const decodedGeo = decodeGeoBase64(rawGeoB64);
+      if (decodedGeo) {
+        setGeoData(decodedGeo);
+        setActiveResultTab('geo');
+        setIsSharedView(true);
+        setPhase("done");
+        if (decodedGeo.date) setSharedMeta({ date: decodedGeo.date });
+        if (decodedGeo.ip4 || decodedGeo.isp) {
+          setNetworkInfo({
+            ip: decodedGeo.ip4 || "—",
+            isp: decodedGeo.isp || "Интернет-провайдер",
+            city: decodedGeo.city || "",
+            country: decodedGeo.country || "",
+            country_code: ""
+          });
+        }
+        return;
+      }
+    }
+
+    // 2. Проверка на результаты теста скорости (/speedtest/:b64 или ?result=:b64 или #speedtest/:b64)
+    const speedtestMatch = pathname.match(/\/speedtest\/([A-Za-z0-9+/=_-]+)/i);
     const queryB64 = searchParams.get("result") || searchParams.get("b64");
     const hashMatch = window.location.hash.match(/#\/?speedtest\/([A-Za-z0-9+/=_-]+)/i);
 
@@ -232,6 +264,12 @@ export default function App() {
         setPhase("done");
         setIsSharedView(true);
         setSharedMeta({ date: decoded.date });
+        if ((decoded as any).geo) {
+          const g = typeof (decoded as any).geo === 'string'
+            ? decodeGeoBase64((decoded as any).geo)
+            : (decoded as any).geo;
+          if (g) setGeoData(g);
+        }
         if (decoded.isp || decoded.city || decoded.ip) {
           setNetworkInfo({
             ip: decoded.ip || "—",
@@ -266,7 +304,62 @@ export default function App() {
     return "Мбит/с";
   };
 
+  const currentGeoData = useMemo<SharedGeoData>(() => {
+    if (geoData) return geoData;
+    const cc = networkInfo?.country_code || (networkInfo?.country ? networkInfo.country.slice(0, 2).toUpperCase() : "FI");
+    return {
+      ip4: networkInfo?.ip || "",
+      isp: networkInfo?.isp || "",
+      city: networkInfo?.city || "",
+      country: networkInfo?.country || "",
+      date: sharedMeta?.date || new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" }) + " г.",
+      custom: [
+        { service: "Google", ipv4: cc, ipv6: cc },
+        { service: "Google Search Captcha", ipv4: "No", ipv6: "No" },
+        { service: "YouTube", ipv4: cc, ipv6: cc },
+        { service: "YouTube Premium", ipv4: "Yes", ipv6: "Yes" },
+        { service: "YouTube Music", ipv4: "Yes", ipv6: "Yes" },
+        { service: "Netflix", ipv4: cc, ipv6: cc },
+        { service: "Spotify", ipv4: cc, ipv6: cc },
+        { service: "Spotify Signup", ipv4: "Yes", ipv6: "Yes" },
+        { service: "ChatGPT (OpenAI)", ipv4: cc, ipv6: cc },
+        { service: "Twitch", ipv4: cc, ipv6: null },
+        { service: "Apple", ipv4: cc, ipv6: cc },
+        { service: "Steam", ipv4: cc, ipv6: null },
+        { service: "PlayStation", ipv4: cc, ipv6: cc },
+        { service: "TikTok", ipv4: cc, ipv6: null },
+        { service: "Microsoft (Bing)", ipv4: cc, ipv6: cc },
+        { service: "Reddit", ipv4: cc, ipv6: null },
+        { service: "Ookla Speedtest", ipv4: cc, ipv6: null },
+        { service: "JetBrains", ipv4: cc, ipv6: cc }
+      ],
+      primary: [
+        { service: "maxmind.com", ipv4: cc, ipv6: cc },
+        { service: "cloudflare.com", ipv4: cc, ipv6: null },
+        { service: "ipinfo.io", ipv4: cc, ipv6: cc },
+        { service: "ipregistry.co", ipv4: cc, ipv6: cc },
+        { service: "country.is", ipv4: cc, ipv6: cc },
+        { service: "geojs.io", ipv4: cc, ipv6: cc },
+        { service: "ipwho.is", ipv4: cc, ipv6: cc },
+        { service: "2ip.io", ipv4: cc, ipv6: null }
+      ],
+      cdn: [
+        { service: "YouTube CDN", ipv4: cc, ipv6: cc },
+        { service: "Netflix CDN", ipv4: cc, ipv6: cc }
+      ]
+    };
+  }, [geoData, networkInfo, sharedMeta]);
+
   const generateShareUrl = () => {
+    const origin = window.location.hostname.includes("vercel.app")
+      ? window.location.origin
+      : "https://astrotest-delta.vercel.app";
+
+    if (activeResultTab === 'geo' && currentGeoData) {
+      const geoB64 = encodeGeoBase64(currentGeoData);
+      return `${origin}/geo/${geoB64}`;
+    }
+
     const displayDown = getDisplayValue(downloadMbps);
     const displayUp = getDisplayValue(uploadMbps);
 
@@ -285,9 +378,6 @@ export default function App() {
     };
 
     const b64 = encodeSpeedtestBase64(payload);
-    const origin = window.location.hostname.includes("vercel.app")
-      ? window.location.origin
-      : "https://astrotest-delta.vercel.app";
     return `${origin}/speedtest/${b64}`;
   };
 
@@ -709,72 +799,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Интерактивный пример консольного вывода */}
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Пример вывода в консоли сервера:</span>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-[#07090e] overflow-hidden font-mono text-xs">
-                  <div className="px-4 py-2.5 bg-white/[0.04] border-b border-white/5 flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500/80" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                    <div className="w-3 h-3 rounded-full bg-green-500/80" />
-                    <span className="text-[11px] text-slate-500 ml-2">root@server:~# astrotest</span>
-                  </div>
-                  <div className="p-4 sm:p-5 space-y-1 text-slate-300 overflow-x-auto leading-relaxed">
-                    <div className="text-blue-400 font-bold">🚀 Astrotest CLI — Тест скорости для Linux-серверов</div>
-                    <div className="text-slate-500 text-[11px]">--------------------------------------------------------------</div>
-                    <div>🏢 <span className="font-semibold text-white">Провайдер:</span>  <span className="text-emerald-400 font-bold">aurologic GmbH</span></div>
-                    <div>🌐 <span className="font-semibold text-white">IP-адрес:</span>   45.11.18.91</div>
-                    <div>🌍 <span className="font-semibold text-white">Локация:</span>    Helsinki, Finland 🇫🇮</div>
-                    <div>💻 <span className="font-semibold text-white">Система:</span>    Ubuntu 22.04 LTS (x86_64)</div>
-                    <div className="text-slate-500 text-[11px]">--------------------------------------------------------------</div>
-                    <div>⏱️  <span className="font-semibold text-white">Пинг (Latency):</span>      <span className="text-emerald-400 font-bold">14 ms</span></div>
-                    <div>📥 <span className="font-semibold text-white">Скачивание (Download):</span>  <span className="text-emerald-400 font-bold">840.5 Mbps</span></div>
-                    <div>📤 <span className="font-semibold text-white">Выгрузка (Upload):</span>      <span className="text-emerald-400 font-bold">412.3 Mbps</span></div>
-                    <div className="text-slate-500 text-[11px]">--------------------------------------------------------------</div>
-                    <div className="text-white font-bold">🌐 Результаты замера в Web (Astrotest):</div>
-                    <div className="text-blue-400 underline break-all">https://astrotest-delta.vercel.app/speedtest/eyJkb3dubG9hZCI6ODQwLjUs...</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Преимущества и возможности */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                  <div className="font-semibold text-white text-sm flex items-center gap-2">
-                    <span className="text-blue-400">⚡</span> Без лишних зависимостей
-                  </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Использует только стандартные системные утилиты curl и bash. Никаких тяжёлых пакетов или Python.
-                  </p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                  <div className="font-semibold text-white text-sm flex items-center gap-2">
-                    <span className="text-blue-400">🌐</span> Интерактивный Web-отчёт
-                  </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    По ссылке открывается полноценный интерфейс Astrotest с циферблатом, картой и кнопкой «Поделиться».
-                  </p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                  <div className="font-semibold text-white text-sm flex items-center gap-2">
-                    <span className="text-blue-400">📱</span> Оповещения в Telegram
-                  </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Если настроен бот, сводка замера с сервера сразу отправляется в указанный Telegram-чат.
-                  </p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                  <div className="font-semibold text-white text-sm flex items-center gap-2">
-                    <span className="text-blue-400">🐧</span> Любые Linux дистрибутивы
-                  </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Работает на Ubuntu, Debian, CentOS, RedHat, AlmaLinux, Rocky, Arch Linux и Alpine.
-                  </p>
-                </div>
-              </div>
-
               {/* Кнопка закрытия */}
               <div className="pt-2 pb-8">
                 <button 
@@ -790,7 +814,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className="z-10 w-full max-w-xl flex flex-col items-center">
+      <div className={cn("z-10 w-full flex flex-col items-center transition-all duration-300", activeResultTab === 'geo' ? "max-w-4xl" : "max-w-xl")}>
         {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
@@ -840,7 +864,7 @@ export default function App() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full mb-6 p-4 rounded-[20px] bg-black flex items-center gap-4 text-left"
+            className="w-full mb-4 p-4 rounded-[20px] bg-black flex items-center gap-4 text-left"
           >
             <div className="h-12 w-12 rounded-2xl bg-black text-blue-500 flex items-center justify-center shrink-0">
               <AstroLogo className="h-6 w-6 text-blue-500" />
@@ -848,131 +872,214 @@ export default function App() {
             <div className="min-w-0">
               <div className="text-xs text-blue-500 font-bold uppercase tracking-wider">СОХРАНЁННЫЙ ЗАМЕР</div>
               <div className="text-sm sm:text-base text-blue-400 font-medium mt-0.5 truncate">
-                {sharedMeta?.date ? `Тест проведён ${sharedMeta.date}` : "Результаты теста скорости"}
+                {sharedMeta?.date ? `Тест проведён ${sharedMeta.date}` : "Результаты теста"}
               </div>
             </div>
           </motion.div>
         )}
-        
-        {/* Gauge Area */}
-        <div className="w-full flex flex-col items-center justify-center pt-2 pb-2 relative">
-          <HalfCircleGauge 
-            value={phase === "uploading" ? getDisplayValue(uploadMbps) : getDisplayValue(downloadMbps)} 
-            phase={phase} 
-            onStart={runTest}
-            maxScale={unit === "MB/s" ? maxScale / 8 : (unit === "KB/s" ? (maxScale * 1000) / 8 : maxScale)}
-            unitLabel={getUnitLabel(unit)}
-          />
-        </div>
 
-        {/* Network & System Info Card */}
-        <div className="w-full mt-3 mb-4 p-5 rounded-[22px] bg-black flex flex-col gap-4">
-          {/* Provider */}
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="text-blue-500 shrink-0">
-              <PlanetEarthIcon className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">ПРОВАЙДЕР</div>
-              <div className="font-bold text-xs sm:text-sm text-white tracking-wide truncate">{networkInfo?.isp || "Поиск..."}</div>
-            </div>
-          </div>
-
-          {/* OS & Browser */}
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="text-blue-500 shrink-0">
-              <PhoneDeviceIcon className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">ОС И БРАУЗЕР</div>
-              <div className="font-bold text-xs sm:text-sm text-white truncate">
-                {clientSystem.os} <span className="text-slate-500 mx-1">•</span> {clientSystem.browser}
-              </div>
-            </div>
-          </div>
-
-          {/* IP & Location */}
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="text-blue-500 shrink-0">
-              <MapPin className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">IP / ЛОКАЦИЯ</div>
-              <div className="font-bold text-xs sm:text-sm text-white truncate">
-                {networkInfo?.ip && networkInfo.ip !== "—" ? networkInfo.ip : "—"}
-                {networkInfo?.city ? <span className="text-slate-400 font-normal"> • {networkInfo.city}</span> : ""}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Results Table (3 Columns) */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full mt-2">
-          <ResultColumn 
-            icon={<ArchiveDownIcon className="w-4 h-4 text-blue-500" />}
-            label="ЗАГРУЗКА"
-            value={downloadMbps ? (unit === "KB/s" ? Math.round(getDisplayValue(downloadMbps)).toLocaleString("ru-RU") : getDisplayValue(downloadMbps).toFixed(1)) : "—"}
-            isActive={phase === "downloading"}
-          />
-          <ResultColumn 
-            icon={<ArchiveUpIcon className="w-4 h-4 text-blue-500" />}
-            label="ВЫГРУЗКА"
-            value={uploadMbps ? (unit === "KB/s" ? Math.round(getDisplayValue(uploadMbps)).toLocaleString("ru-RU") : getDisplayValue(uploadMbps).toFixed(1)) : "—"}
-            isActive={phase === "uploading"}
-          />
-          <ResultColumn 
-            icon={<ChartSplineIcon className="w-4 h-4 text-blue-500" />}
-            label="ПИНГ"
-            value={ping !== null ? ping.toString() : "—"}
-            isActive={phase === "pinging"}
-          />
-        </div>
-
-        {/* Action Buttons */}
-        <AnimatePresence>
-          {phase === "done" && (
-            <motion.div
-              initial={{ height: 0, opacity: 0, marginTop: 0 }}
-              animate={{ height: "auto", opacity: 1, marginTop: 20 }}
-              className="overflow-hidden w-full"
+        {/* Tab Switcher between Speed & Geo when test is complete */}
+        {phase === "done" && (
+          <motion.div 
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full flex items-center justify-center p-1 rounded-2xl bg-black/50 border border-white/10 mb-4"
+          >
+            <button
+              onClick={() => setActiveResultTab('speed')}
+              className={cn(
+                "flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2",
+                activeResultTab === 'speed'
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                  : "text-slate-400 hover:text-white"
+              )}
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-                <button
-                  onClick={handleOpenShare}
-                  className={cn(
-                    "w-full rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]",
-                    copiedToast
-                      ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/25"
-                      : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25"
-                  )}
-                >
-                  {copiedToast ? (
-                    <>
-                      <Check className="h-5 w-5 text-emerald-200" />
-                      Ссылка скопирована!
-                    </>
-                  ) : (
-                    <>
-                      <Share2 className="h-5 w-5" />
-                      Поделиться
-                    </>
-                  )}
-                </button>
+              <Gauge className="w-4 h-4" />
+              <span>Скорость сети</span>
+            </button>
+            <button
+              onClick={() => setActiveResultTab('geo')}
+              className={cn(
+                "flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2",
+                activeResultTab === 'geo'
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                  : "text-slate-400 hover:text-white"
+              )}
+            >
+              <Globe className="w-4 h-4" />
+              <span>Геолокация сервисов (Geo)</span>
+            </button>
+          </motion.div>
+        )}
 
-                <button
-                  onClick={() => {
-                    if (isSharedView) setIsSharedView(false);
-                    runTest();
-                  }}
-                  className="w-full bg-black hover:bg-white/5 text-white rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-colors border border-white/15 active:scale-[0.99]"
-                >
-                  <RotateCcw className="h-5 w-5" />
-                  Заново
-                </button>
+        {activeResultTab === 'geo' ? (
+          <div className="w-full flex flex-col items-center">
+            <GeoReportView 
+              geoData={currentGeoData} 
+              onBackToSpeedtest={() => setActiveResultTab('speed')}
+              hasSpeedtestData={!!downloadMbps}
+            />
+
+            {/* Action Buttons under Geo view */}
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+              <button
+                onClick={handleOpenShare}
+                className={cn(
+                  "w-full rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]",
+                  copiedToast
+                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/25"
+                    : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25"
+                )}
+              >
+                {copiedToast ? (
+                  <>
+                    <Check className="h-5 w-5 text-emerald-200" />
+                    Ссылка скопирована!
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="h-5 w-5" />
+                    Поделиться Geo отчётом
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  if (isSharedView) setIsSharedView(false);
+                  setActiveResultTab('speed');
+                  runTest();
+                }}
+                className="w-full bg-black hover:bg-white/5 text-white rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-colors border border-white/15 active:scale-[0.99]"
+              >
+                <RotateCcw className="h-5 w-5" />
+                Новый замер
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Gauge Area */}
+            <div className="w-full flex flex-col items-center justify-center pt-2 pb-2 relative">
+              <HalfCircleGauge 
+                value={phase === "uploading" ? getDisplayValue(uploadMbps) : getDisplayValue(downloadMbps)} 
+                phase={phase} 
+                onStart={runTest}
+                maxScale={unit === "MB/s" ? maxScale / 8 : (unit === "KB/s" ? (maxScale * 1000) / 8 : maxScale)}
+                unitLabel={getUnitLabel(unit)}
+              />
+            </div>
+
+            {/* Network & System Info Card */}
+            <div className="w-full mt-3 mb-4 p-5 rounded-[22px] bg-black flex flex-col gap-4">
+              {/* Provider */}
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="text-blue-500 shrink-0">
+                  <PlanetEarthIcon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">ПРОВАЙДЕР</div>
+                  <div className="font-bold text-xs sm:text-sm text-white tracking-wide truncate">{networkInfo?.isp || "Поиск..."}</div>
+                </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+
+              {/* OS & Browser */}
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="text-blue-500 shrink-0">
+                  <PhoneDeviceIcon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">ОС И БРАУЗЕР</div>
+                  <div className="font-bold text-xs sm:text-sm text-white truncate">
+                    {clientSystem.os} <span className="text-slate-500 mx-1">•</span> {clientSystem.browser}
+                  </div>
+                </div>
+              </div>
+
+              {/* IP & Location */}
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="text-blue-500 shrink-0">
+                  <MapPin className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-semibold">IP / ЛОКАЦИЯ</div>
+                  <div className="font-bold text-xs sm:text-sm text-white truncate">
+                    {networkInfo?.ip && networkInfo.ip !== "—" ? networkInfo.ip : "—"}
+                    {networkInfo?.city ? <span className="text-slate-400 font-normal"> • {networkInfo.city}</span> : ""}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Results Table (3 Columns) */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full mt-2">
+              <ResultColumn 
+                icon={<ArchiveDownIcon className="w-4 h-4 text-blue-500" />}
+                label="ЗАГРУЗКА"
+                value={downloadMbps ? (unit === "KB/s" ? Math.round(getDisplayValue(downloadMbps)).toLocaleString("ru-RU") : getDisplayValue(downloadMbps).toFixed(1)) : "—"}
+                isActive={phase === "downloading"}
+              />
+              <ResultColumn 
+                icon={<ArchiveUpIcon className="w-4 h-4 text-blue-500" />}
+                label="ВЫГРУЗКА"
+                value={uploadMbps ? (unit === "KB/s" ? Math.round(getDisplayValue(uploadMbps)).toLocaleString("ru-RU") : getDisplayValue(uploadMbps).toFixed(1)) : "—"}
+                isActive={phase === "uploading"}
+              />
+              <ResultColumn 
+                icon={<ChartSplineIcon className="w-4 h-4 text-blue-500" />}
+                label="ПИНГ"
+                value={ping !== null ? ping.toString() : "—"}
+                isActive={phase === "pinging"}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <AnimatePresence>
+              {phase === "done" && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                  animate={{ height: "auto", opacity: 1, marginTop: 20 }}
+                  className="overflow-hidden w-full"
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                    <button
+                      onClick={handleOpenShare}
+                      className={cn(
+                        "w-full rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]",
+                        copiedToast
+                          ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/25"
+                          : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25"
+                      )}
+                    >
+                      {copiedToast ? (
+                        <>
+                          <Check className="h-5 w-5 text-emerald-200" />
+                          Ссылка скопирована!
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="h-5 w-5" />
+                          Поделиться
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (isSharedView) setIsSharedView(false);
+                        runTest();
+                      }}
+                      className="w-full bg-black hover:bg-white/5 text-white rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-colors border border-white/15 active:scale-[0.99]"
+                    >
+                      <RotateCcw className="h-5 w-5" />
+                      Заново
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
 
         <div className="mt-8 text-[9px] text-slate-800 text-center max-w-sm px-4 relative z-10 font-medium cursor-default select-none pointer-events-none">
           Используя сервис, вы соглашаетесь с базовой статистикой.
