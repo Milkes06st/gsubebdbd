@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useSpring, useTransform } from "framer-motion";
 import { Play, RotateCcw, Settings, MapPin, Share2, Check } from "lucide-react";
 import { fetchNetworkInfo, measurePing, measureDownloadSpeed, measureUploadSpeed, NetworkInfo } from "./lib/speedTest";
 import { cn } from "./lib/utils";
@@ -387,6 +387,7 @@ export default function App() {
 
       // 3. Measure Upload
       setPhase("uploading");
+      setUploadMbps(0);
       setProgress(0);
       finalUp = await measureUploadSpeed((mbps, prog) => {
         setUploadMbps(mbps);
@@ -763,15 +764,34 @@ function HalfCircleGauge({ value, phase, onStart, maxScale, unitLabel }: { value
 
   const clampedVal = Math.max(0, Math.min(value, maxScale));
   
-  // Calculate offset (0 = empty, 1 = full)
-  // We'll use a curve so small values still show movement
-  const progressRatio = Math.pow(clampedVal / maxScale, 0.6); 
-  const displayOffset = pathLength - (progressRatio * pathLength);
+  // Target progress ratio (0 to 1)
+  const targetRatio = (isTesting || phase === "done") ? Math.pow(clampedVal / maxScale, 0.6) : 0;
 
-  // Angle goes from PI (left) to 0 (right)
-  const currentAngle = Math.PI - (progressRatio * Math.PI);
-  const thumbX = cx + r * Math.cos(currentAngle);
-  const thumbY = cy - r * Math.sin(currentAngle);
+  // Single spring driver ensuring 100% synchronization between arc and thumb
+  const springRatio = useSpring(0, { stiffness: 90, damping: 20, mass: 0.5 });
+
+  useEffect(() => {
+    springRatio.set(targetRatio);
+  }, [targetRatio, springRatio]);
+
+  // Stroke offset strictly clamped to [0, 1]
+  const strokeDashoffset = useTransform(springRatio, (p) => {
+    const clampedP = Math.max(0, Math.min(1, p));
+    return pathLength - (clampedP * pathLength);
+  });
+
+  // Coordinates strictly on the arc radius r = 130 at any moment in time
+  const thumbX = useTransform(springRatio, (p) => {
+    const clampedP = Math.max(0, Math.min(1, p));
+    const angle = Math.PI - (clampedP * Math.PI);
+    return cx + r * Math.cos(angle);
+  });
+
+  const thumbY = useTransform(springRatio, (p) => {
+    const clampedP = Math.max(0, Math.min(1, p));
+    const angle = Math.PI - (clampedP * Math.PI);
+    return cy - r * Math.sin(angle);
+  });
 
   // Ticks calculation
   const numTicks = 5;
@@ -833,19 +853,17 @@ function HalfCircleGauge({ value, phase, onStart, maxScale, unitLabel }: { value
             strokeWidth="18"
             strokeLinecap="round"
             strokeDasharray={pathLength}
-            initial={{ strokeDashoffset: pathLength }}
-            animate={{ strokeDashoffset: isTesting || phase === "done" ? displayOffset : pathLength }}
-            transition={{ type: "spring", stiffness: 30, damping: 15 }}
+            style={{ strokeDashoffset }}
           />
 
-          {/* Thumb Circle */}
+          {/* Thumb Circle - strictly synchronized with arc progress along radius r */}
           {(isTesting || phase === "done") && (
             <motion.circle
-              initial={{ cx: cx - r, cy: cy }}
-              animate={{ cx: thumbX, cy: thumbY }}
-              transition={{ type: "spring", stiffness: 30, damping: 15 }}
-              r="12"
+              cx={thumbX}
+              cy={thumbY}
+              r="11.5"
               fill="white"
+              style={{ filter: "drop-shadow(0px 1px 3px rgba(0,0,0,0.4))" }}
             />
           )}
         </svg>
