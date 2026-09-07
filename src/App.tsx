@@ -209,9 +209,9 @@ export default function App() {
   // Sharing & Shared Link state
   const [isSharedView, setIsSharedView] = useState(false);
   const [isServerTest, setIsServerTest] = useState(false);
+  const [isGeoView, setIsGeoView] = useState(false);
   const [sharedMeta, setSharedMeta] = useState<{ date?: string } | null>(null);
   const [copiedToast, setCopiedToast] = useState(false);
-  const [activeResultTab, setActiveResultTab] = useState<'speed' | 'geo'>('speed');
   const [geoData, setGeoData] = useState<SharedGeoData | null>(null);
 
   useEffect(() => {
@@ -231,9 +231,9 @@ export default function App() {
     if (rawGeoB64) {
       const decodedGeo = decodeGeoBase64(rawGeoB64);
       if (decodedGeo) {
+        setIsGeoView(true);
         setIsServerTest(true);
         setGeoData(decodedGeo);
-        setActiveResultTab('geo');
         setIsSharedView(true);
         setPhase("done");
         if (decodedGeo.date) setSharedMeta({ date: decodedGeo.date });
@@ -254,6 +254,7 @@ export default function App() {
     const serverSpeedtestMatch = pathname.match(/\/speedtest\/server\/([A-Za-z0-9+/=_-]+)/i) ||
                                 window.location.hash.match(/#\/?speedtest\/server\/([A-Za-z0-9+/=_-]+)/i);
     if (serverSpeedtestMatch?.[1]) {
+      setIsGeoView(false);
       setIsServerTest(true);
       const decoded = decodeSpeedtestBase64(serverSpeedtestMatch[1]);
       if (decoded) {
@@ -296,9 +297,9 @@ export default function App() {
 
     const rawB64 = speedtestMatch?.[1] || queryB64 || hashMatch?.[1];
     if (rawB64) {
+      setIsGeoView(false);
       setIsServerTest(false);
       setGeoData(null);
-      setActiveResultTab('speed');
       const decoded = decodeSpeedtestBase64(rawB64);
       if (decoded) {
         setDownloadMbps(decoded.download);
@@ -447,7 +448,8 @@ export default function App() {
         { service: "country.is", ipv4: targetCc, ipv6: targetCc },
         { service: "geojs.io", ipv4: targetCc, ipv6: targetCc },
         { service: "ipwho.is", ipv4: targetCc, ipv6: targetCc },
-        { service: "2ip.io", ipv4: targetCc, ipv6: null }
+        { service: "2ip.io", ipv4: targetCc, ipv6: null },
+        { service: "mile.host", ipv4: "Доступен", ipv6: null }
       ],
       cdn: [
         { service: "YouTube CDN", ipv4: targetCc, ipv6: targetCc },
@@ -461,7 +463,7 @@ export default function App() {
       ? window.location.origin
       : "https://astrotest-delta.vercel.app";
 
-    if (activeResultTab === 'geo' && currentGeoData) {
+    if (isGeoView && currentGeoData) {
       const geoB64 = encodeGeoBase64(currentGeoData);
       return `${origin}/geo/${geoB64}`;
     }
@@ -923,7 +925,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className={cn("z-10 w-full flex flex-col items-center transition-all duration-300", isServerTest && activeResultTab === 'geo' ? "max-w-4xl" : "max-w-xl")}>
+      <div className={cn("z-10 w-full flex flex-col items-center transition-all duration-300", isGeoView ? "max-w-4xl" : "max-w-xl")}>
         {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
@@ -969,13 +971,13 @@ export default function App() {
         </AnimatePresence>
 
         {/* Shared View Banner */}
-        {isSharedView && (
+        {!isGeoView && isSharedView && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className="w-full mb-4 p-4 rounded-[20px] bg-black flex items-center gap-4 text-left"
           >
-            <div className="h-12 w-12 rounded-2xl bg-black text-blue-500 flex items-center justify-center shrink-0">
+            <div className="text-blue-500 shrink-0">
               {isServerTest ? <Server className="h-6 w-6 text-blue-500" /> : <AstroLogo className="h-6 w-6 text-blue-500" />}
             </div>
             <div className="min-w-0">
@@ -989,87 +991,12 @@ export default function App() {
           </motion.div>
         )}
 
-        {/* Tab Switcher between Speed & Geo: ONLY for server tests */}
-        {phase === "done" && isServerTest && (
-          <motion.div 
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full flex items-center justify-center p-1 rounded-2xl bg-black/50 border border-white/10 mb-4"
-          >
-            <button
-              onClick={() => setActiveResultTab('speed')}
-              className={cn(
-                "flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2",
-                activeResultTab === 'speed'
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                  : "text-slate-400 hover:text-white"
-              )}
-            >
-              <Gauge className="w-4 h-4" />
-              <span>Скорость сети</span>
-            </button>
-            <button
-              onClick={() => setActiveResultTab('geo')}
-              className={cn(
-                "flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2",
-                activeResultTab === 'geo'
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                  : "text-slate-400 hover:text-white"
-              )}
-            >
-              <Globe className="w-4 h-4" />
-              <span>Геолокация сервисов (Geo)</span>
-            </button>
-          </motion.div>
-        )}
-
-        {isServerTest && activeResultTab === 'geo' && currentGeoData ? (
+        {isGeoView && currentGeoData ? (
           <div className="w-full flex flex-col items-center">
             <GeoReportView 
               geoData={currentGeoData} 
-              onBackToSpeedtest={() => setActiveResultTab('speed')}
               hasSpeedtestData={!!downloadMbps}
             />
-
-            {/* Action Buttons under Geo view */}
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-              <button
-                onClick={handleOpenShare}
-                className={cn(
-                  "w-full rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]",
-                  copiedToast
-                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/25"
-                    : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25"
-                )}
-              >
-                {copiedToast ? (
-                  <>
-                    <Check className="h-5 w-5 text-emerald-200" />
-                    Ссылка скопирована!
-                  </>
-                ) : (
-                  <>
-                    <Share2 className="h-5 w-5" />
-                    Поделиться Geo отчётом
-                  </>
-                )}
-              </button>
-
-              <button
-                onClick={() => {
-                  if (isSharedView) {
-                    setIsSharedView(false);
-                    setIsServerTest(false);
-                  }
-                  setActiveResultTab('speed');
-                  runTest();
-                }}
-                className="w-full bg-black hover:bg-white/5 text-white rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-colors border border-white/15 active:scale-[0.99]"
-              >
-                <RotateCcw className="h-5 w-5" />
-                Новый замер
-              </button>
-            </div>
           </div>
         ) : (
           <>
@@ -1146,34 +1073,6 @@ export default function App() {
                 isActive={phase === "pinging"}
               />
             </div>
-
-            {/* Server Test: Direct link to Geo report */}
-            {isServerTest && phase === "done" && (
-              <button
-                onClick={() => setActiveResultTab('geo')}
-                className="w-full mt-3 p-3.5 sm:p-4 rounded-2xl bg-black hover:bg-white/5 border border-white/10 hover:border-blue-500/40 text-blue-300 flex items-center justify-between transition-all group active:scale-[0.99]"
-              >
-                <div className="flex items-center gap-3 text-left min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Globe className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                      <span>Геолокация сервисов (Geo)</span>
-                      {resolveCountryCode(networkInfo?.country, networkInfo?.country_code) && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 font-semibold border border-blue-500/30">
-                          {resolveCountryCode(networkInfo?.country, networkInfo?.country_code)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-slate-400 mt-0.5 truncate">
-                      Доступность Google, YouTube, Netflix, ChatGPT и стримингов
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-blue-400 shrink-0 group-hover:translate-x-1 transition-transform ml-2" />
-              </button>
-            )}
 
             {/* Action Buttons */}
             <AnimatePresence>

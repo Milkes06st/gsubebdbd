@@ -148,15 +148,13 @@ export const GeoReportView: React.FC<GeoReportViewProps> = ({
       <div className="p-6 sm:p-7 rounded-3xl bg-white/[0.02] backdrop-blur-md space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
-                <Globe className="w-5 h-5" />
-              </div>
+            <div className="flex items-center gap-3">
+              <Globe className="w-6 h-6 text-blue-400 shrink-0" />
               <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
                 Геолокация сервисов и стримингов
               </h2>
             </div>
-            <p className="text-sm text-slate-400 leading-relaxed pl-10">
+            <p className="text-sm text-slate-400 leading-relaxed pl-9">
               Определение региона вашего IP-адреса в стриминговых сервисах и мировых базах данных GeoIP
             </p>
           </div>
@@ -167,7 +165,7 @@ export const GeoReportView: React.FC<GeoReportViewProps> = ({
                 onClick={onBackToSpeedtest}
                 className="px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 hover:text-white font-semibold text-xs sm:text-sm transition-colors flex items-center gap-2 active:scale-95"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-4 h-4 text-slate-400" />
                 <span>К скорости</span>
               </button>
             )}
@@ -217,10 +215,10 @@ export const GeoReportView: React.FC<GeoReportViewProps> = ({
       {/* Панель фильтров и поиска */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Вкладки категорий */}
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/[0.02] overflow-x-auto">
+        <div className="flex items-center gap-1.5 overflow-x-auto">
           <button
             onClick={() => setFilterCategory('all')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
               filterCategory === 'all' 
                 ? 'bg-blue-600 text-white shadow-sm' 
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
@@ -232,7 +230,7 @@ export const GeoReportView: React.FC<GeoReportViewProps> = ({
 
           <button
             onClick={() => setFilterCategory('custom')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
               filterCategory === 'custom' 
                 ? 'bg-blue-600 text-white shadow-sm' 
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
@@ -244,7 +242,7 @@ export const GeoReportView: React.FC<GeoReportViewProps> = ({
 
           <button
             onClick={() => setFilterCategory('primary')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
               filterCategory === 'primary' 
                 ? 'bg-blue-600 text-white shadow-sm' 
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
@@ -256,7 +254,7 @@ export const GeoReportView: React.FC<GeoReportViewProps> = ({
 
           <button
             onClick={() => setFilterCategory('cdn')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
               filterCategory === 'cdn' 
                 ? 'bg-blue-600 text-white shadow-sm' 
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'

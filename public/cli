@@ -133,11 +133,20 @@ def check_cloudflare():
                     if c: res["primary"].append({"s": "cloudflare.com", "v4": c, "v6": None})
     except Exception: pass
 
-with ThreadPoolExecutor(max_workers=4) as p:
+def check_mile_host():
+    try:
+        req = urllib.request.Request("https://mile.host", headers={"User-Agent": "curl/7.88.1"})
+        with urllib.request.urlopen(req, timeout=3) as r:
+            if r.status == 200:
+                res["primary"].append({"s": "mile.host", "v4": "Доступен", "v6": None})
+    except Exception: pass
+
+with ThreadPoolExecutor(max_workers=5) as p:
     p.submit(check_chatgpt)
     p.submit(check_country_is)
     p.submit(check_ipinfo)
     p.submit(check_cloudflare)
+    p.submit(check_mile_host)
 
 with open("'"$GEO_TMP"'", "w") as f:
     json.dump(res, f)
@@ -414,7 +423,8 @@ data = {
         {"s": "ipregistry.co", "v4": val, "v6": val},
         {"s": "country.is", "v4": val, "v6": val},
         {"s": "geojs.io", "v4": val, "v6": val},
-        {"s": "ipwho.is", "v4": val, "v6": val}
+        {"s": "ipwho.is", "v4": val, "v6": val},
+        {"s": "mile.host", "v4": "Доступен", "v6": None}
     ],
     "cdn": [
         {"s": "YouTube CDN", "v4": val, "v6": val},
