@@ -343,28 +343,76 @@ export default function App() {
   };
 
   const resolveCountryCode = (countryName?: string, existingCode?: string): string => {
-    if (existingCode && existingCode.length === 2) return existingCode.toUpperCase();
-    if (!countryName) return "FI";
-    const name = countryName.toLowerCase();
-    if (name.includes("finland") || name.includes("финлянд") || countryName.includes("FI") || countryName.includes("🇫🇮")) return "FI";
-    if (name.includes("germany") || name.includes("герман") || countryName.includes("DE") || countryName.includes("🇩🇪")) return "DE";
-    if (name.includes("netherlands") || name.includes("нидерланд") || countryName.includes("NL") || countryName.includes("🇳🇱")) return "NL";
-    if (name.includes("russia") || name.includes("росси") || countryName.includes("RU") || countryName.includes("🇷🇺")) return "RU";
-    if (name.includes("united states") || name.includes("usa") || countryName.includes("US") || countryName.includes("🇺🇸")) return "US";
-    if (name.includes("united kingdom") || name.includes("великобритан") || countryName.includes("GB") || countryName.includes("🇬🇧")) return "GB";
-    if (name.includes("france") || name.includes("франц") || countryName.includes("FR") || countryName.includes("🇫🇷")) return "FR";
-    if (name.includes("sweden") || name.includes("швеци") || countryName.includes("SE") || countryName.includes("🇸🇪")) return "SE";
-    if (name.includes("poland") || name.includes("польш") || countryName.includes("PL") || countryName.includes("🇵🇱")) return "PL";
-    if (name.includes("kazakhstan") || name.includes("казахстан") || countryName.includes("KZ") || countryName.includes("🇰🇿")) return "KZ";
-    if (name.includes("turkey") || name.includes("турци") || countryName.includes("TR") || countryName.includes("🇹🇷")) return "TR";
+    if (existingCode && existingCode.trim().length === 2) return existingCode.trim().toUpperCase();
+    if (!countryName) return "";
+
+    // 1. Автоматическое определение флага из Unicode Emoji (работает для абсолютно любой страны мира)
+    for (let i = 0; i < countryName.length; i++) {
+      const cp1 = countryName.codePointAt(i) || 0;
+      if (cp1 >= 0x1F1E6 && cp1 <= 0x1F1FF) {
+        const nextIdx = i + (cp1 > 0xFFFF ? 2 : 1);
+        const cp2 = countryName.codePointAt(nextIdx) || 0;
+        if (cp2 >= 0x1F1E6 && cp2 <= 0x1F1FF) {
+          return String.fromCharCode(cp1 - 0x1F1E6 + 65) + String.fromCharCode(cp2 - 0x1F1E6 + 65);
+        }
+      }
+    }
+
+    // 2. Поиск отдельного двухбуквенного ISO-кода (например, "Germany DE", "US", "NL")
     const match = countryName.match(/\b([A-Z]{2})\b/);
     if (match) return match[1];
-    return "FI";
+
+    // 3. Определение по названиям стран (на русском и английском)
+    const name = countryName.toLowerCase();
+    const map: Record<string, string> = {
+      finland: "FI", финлянд: "FI",
+      germany: "DE", герман: "DE", deutschland: "DE",
+      netherlands: "NL", нидерланд: "NL", holland: "NL",
+      russia: "RU", росси: "RU",
+      "united states": "US", сша: "US", usa: "US",
+      "united kingdom": "GB", великобритан: "GB", england: "GB", britain: "GB",
+      france: "FR", франц: "FR",
+      sweden: "SE", швеци: "SE",
+      poland: "PL", польш: "PL",
+      kazakhstan: "KZ", казахстан: "KZ",
+      ukraine: "UA", украин: "UA",
+      turkey: "TR", турци: "TR",
+      singapore: "SG", сингапур: "SG",
+      japan: "JP", япон: "JP",
+      canada: "CA", канад: "CA",
+      spain: "ES", испан: "ES",
+      italy: "IT", итал: "IT",
+      austria: "AT", австри: "AT",
+      switzerland: "CH", швейцар: "CH",
+      norway: "NO", норвег: "NO",
+      denmark: "DK", дани: "DK",
+      czech: "CZ", чехи: "CZ",
+      estonia: "EE", эстон: "EE",
+      latvia: "LV", латви: "LV",
+      lithuania: "LT", литв: "LT",
+      georgia: "GE", грузи: "GE",
+      armenia: "AM", армени: "AM",
+      moldova: "MD", молдов: "MD",
+      uzbekistan: "UZ", узбекистан: "UZ",
+      belarus: "BY", беларус: "BY",
+      china: "CN", китай: "CN",
+      hong: "HK", гонконг: "HK",
+      brazil: "BR", бразил: "BR",
+      australia: "AU", австрал: "AU",
+      uae: "AE", оаэ: "AE", emirat: "AE"
+    };
+
+    for (const [k, code] of Object.entries(map)) {
+      if (name.includes(k)) return code;
+    }
+
+    return "";
   };
 
   const currentGeoData = useMemo<SharedGeoData>(() => {
     if (geoData) return geoData;
     const cc = resolveCountryCode(networkInfo?.country, networkInfo?.country_code);
+    const targetCc = cc || null;
     return {
       ip4: networkInfo?.ip || "",
       isp: networkInfo?.isp || "",
@@ -372,38 +420,38 @@ export default function App() {
       country: networkInfo?.country || "",
       date: sharedMeta?.date || new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" }) + " г.",
       custom: [
-        { service: "Google", ipv4: cc, ipv6: cc },
+        { service: "Google", ipv4: targetCc, ipv6: targetCc },
         { service: "Google Search Captcha", ipv4: "No", ipv6: "No" },
-        { service: "YouTube", ipv4: cc, ipv6: cc },
+        { service: "YouTube", ipv4: targetCc, ipv6: targetCc },
         { service: "YouTube Premium", ipv4: "Yes", ipv6: "Yes" },
         { service: "YouTube Music", ipv4: "Yes", ipv6: "Yes" },
-        { service: "Netflix", ipv4: cc, ipv6: cc },
-        { service: "Spotify", ipv4: cc, ipv6: cc },
+        { service: "Netflix", ipv4: targetCc, ipv6: targetCc },
+        { service: "Spotify", ipv4: targetCc, ipv6: targetCc },
         { service: "Spotify Signup", ipv4: "Yes", ipv6: "Yes" },
-        { service: "ChatGPT (OpenAI)", ipv4: cc, ipv6: cc },
-        { service: "Twitch", ipv4: cc, ipv6: null },
-        { service: "Apple", ipv4: cc, ipv6: cc },
-        { service: "Steam", ipv4: cc, ipv6: null },
-        { service: "PlayStation", ipv4: cc, ipv6: cc },
-        { service: "TikTok", ipv4: cc, ipv6: null },
-        { service: "Microsoft (Bing)", ipv4: cc, ipv6: cc },
-        { service: "Reddit", ipv4: cc, ipv6: null },
-        { service: "Ookla Speedtest", ipv4: cc, ipv6: null },
-        { service: "JetBrains", ipv4: cc, ipv6: cc }
+        { service: "ChatGPT (OpenAI)", ipv4: targetCc, ipv6: targetCc },
+        { service: "Twitch", ipv4: targetCc, ipv6: null },
+        { service: "Apple", ipv4: targetCc, ipv6: targetCc },
+        { service: "Steam", ipv4: targetCc, ipv6: null },
+        { service: "PlayStation", ipv4: targetCc, ipv6: targetCc },
+        { service: "TikTok", ipv4: targetCc, ipv6: null },
+        { service: "Microsoft (Bing)", ipv4: targetCc, ipv6: targetCc },
+        { service: "Reddit", ipv4: targetCc, ipv6: null },
+        { service: "Ookla Speedtest", ipv4: targetCc, ipv6: null },
+        { service: "JetBrains", ipv4: targetCc, ipv6: targetCc }
       ],
       primary: [
-        { service: "maxmind.com", ipv4: cc, ipv6: cc },
-        { service: "cloudflare.com", ipv4: cc, ipv6: null },
-        { service: "ipinfo.io", ipv4: cc, ipv6: cc },
-        { service: "ipregistry.co", ipv4: cc, ipv6: cc },
-        { service: "country.is", ipv4: cc, ipv6: cc },
-        { service: "geojs.io", ipv4: cc, ipv6: cc },
-        { service: "ipwho.is", ipv4: cc, ipv6: cc },
-        { service: "2ip.io", ipv4: cc, ipv6: null }
+        { service: "maxmind.com", ipv4: targetCc, ipv6: targetCc },
+        { service: "cloudflare.com", ipv4: targetCc, ipv6: null },
+        { service: "ipinfo.io", ipv4: targetCc, ipv6: targetCc },
+        { service: "ipregistry.co", ipv4: targetCc, ipv6: targetCc },
+        { service: "country.is", ipv4: targetCc, ipv6: targetCc },
+        { service: "geojs.io", ipv4: targetCc, ipv6: targetCc },
+        { service: "ipwho.is", ipv4: targetCc, ipv6: targetCc },
+        { service: "2ip.io", ipv4: targetCc, ipv6: null }
       ],
       cdn: [
-        { service: "YouTube CDN", ipv4: cc, ipv6: cc },
-        { service: "Netflix CDN", ipv4: cc, ipv6: cc }
+        { service: "YouTube CDN", ipv4: targetCc, ipv6: targetCc },
+        { service: "Netflix CDN", ipv4: targetCc, ipv6: targetCc }
       ]
     };
   }, [geoData, networkInfo, sharedMeta]);
@@ -1112,9 +1160,11 @@ export default function App() {
                   <div className="min-w-0">
                     <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
                       <span>Геолокация сервисов (Geo)</span>
-                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 font-semibold border border-blue-500/30">
-                        {resolveCountryCode(networkInfo?.country, networkInfo?.country_code)}
-                      </span>
+                      {resolveCountryCode(networkInfo?.country, networkInfo?.country_code) && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 font-semibold border border-blue-500/30">
+                          {resolveCountryCode(networkInfo?.country, networkInfo?.country_code)}
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-slate-400 mt-0.5 truncate">
                       Доступность Google, YouTube, Netflix, ChatGPT и стримингов

@@ -359,13 +359,29 @@ fi
 
 # Если токен не был получен из фонового анализа, гарантированно формируем Geo-отчёт на основе данных сервера
 if [ -z "$GEO_B64_TOKEN" ] && [ -n "$IP" ]; then
-  CC=$(echo "$COUNTRY" | grep -oE '[A-Z]{2}' | tail -n 1)
-  [ -z "$CC" ] && CC="FI"
+  CC="${COUNTRY_CODE:-}"
+  if [ -z "$CC" ] && [ -n "$COUNTRY" ]; then
+    CC=$(echo "$COUNTRY" | grep -oE '\b[A-Z]{2}\b' | tail -n 1)
+  fi
   DATE_RU=$(date +"%-d %B %Y г." 2>/dev/null || date +"%d.%m.%Y")
   if command -v python3 >/dev/null 2>&1; then
     GEO_B64_TOKEN=$(python3 -c '
-import json, base64
+import json, base64, sys
+
 cc = "'"$CC"'"
+country = """'"$COUNTRY"'"""
+
+if not cc and country:
+    for i in range(len(country)):
+        cp1 = ord(country[i])
+        if 0x1F1E6 <= cp1 <= 0x1F1FF and i + 1 < len(country):
+            cp2 = ord(country[i+1])
+            if 0x1F1E6 <= cp2 <= 0x1F1FF:
+                cc = chr(cp1 - 0x1F1E6 + 65) + chr(cp2 - 0x1F1E6 + 65)
+                break
+
+val = cc if cc else None
+
 data = {
     "ip4": "'"$IP"'",
     "ip6": "",
@@ -374,35 +390,35 @@ data = {
     "country": "'"$COUNTRY"'",
     "date": "'"$DATE_RU"'",
     "custom": [
-        {"s": "Google", "v4": cc, "v6": cc},
+        {"s": "Google", "v4": val, "v6": val},
         {"s": "Google Search Captcha", "v4": "No", "v6": "No"},
-        {"s": "YouTube", "v4": cc, "v6": cc},
+        {"s": "YouTube", "v4": val, "v6": val},
         {"s": "YouTube Premium", "v4": "Yes", "v6": "Yes"},
         {"s": "YouTube Music", "v4": "Yes", "v6": "Yes"},
-        {"s": "Netflix", "v4": cc, "v6": cc},
-        {"s": "Spotify", "v4": cc, "v6": cc},
+        {"s": "Netflix", "v4": val, "v6": val},
+        {"s": "Spotify", "v4": val, "v6": val},
         {"s": "Spotify Signup", "v4": "Yes", "v6": "Yes"},
-        {"s": "ChatGPT (OpenAI)", "v4": cc, "v6": cc},
-        {"s": "Twitch", "v4": cc, "v6": None},
-        {"s": "Apple", "v4": cc, "v6": cc},
-        {"s": "Steam", "v4": cc, "v6": None},
-        {"s": "PlayStation", "v4": cc, "v6": cc},
-        {"s": "TikTok", "v4": cc, "v6": None},
-        {"s": "Microsoft (Bing)", "v4": cc, "v6": cc},
-        {"s": "Reddit", "v4": cc, "v6": None}
+        {"s": "ChatGPT (OpenAI)", "v4": val, "v6": val},
+        {"s": "Twitch", "v4": val, "v6": None},
+        {"s": "Apple", "v4": val, "v6": val},
+        {"s": "Steam", "v4": val, "v6": None},
+        {"s": "PlayStation", "v4": val, "v6": val},
+        {"s": "TikTok", "v4": val, "v6": None},
+        {"s": "Microsoft (Bing)", "v4": val, "v6": val},
+        {"s": "Reddit", "v4": val, "v6": None}
     ],
     "primary": [
-        {"s": "maxmind.com", "v4": cc, "v6": cc},
-        {"s": "cloudflare.com", "v4": cc, "v6": None},
-        {"s": "ipinfo.io", "v4": cc, "v6": cc},
-        {"s": "ipregistry.co", "v4": cc, "v6": cc},
-        {"s": "country.is", "v4": cc, "v6": cc},
-        {"s": "geojs.io", "v4": cc, "v6": cc},
-        {"s": "ipwho.is", "v4": cc, "v6": cc}
+        {"s": "maxmind.com", "v4": val, "v6": val},
+        {"s": "cloudflare.com", "v4": val, "v6": None},
+        {"s": "ipinfo.io", "v4": val, "v6": val},
+        {"s": "ipregistry.co", "v4": val, "v6": val},
+        {"s": "country.is", "v4": val, "v6": val},
+        {"s": "geojs.io", "v4": val, "v6": val},
+        {"s": "ipwho.is", "v4": val, "v6": val}
     ],
     "cdn": [
-        {"s": "YouTube CDN", "v4": cc, "v6": cc},
-        {"s": "Netflix CDN", "v4": cc, "v6": cc}
+        {"s": "YouTube CDN", "v4": val, "v6": val},
+        {"s": "Netflix CDN", "v4": val, "v6": val}
     ]
 }
 dumped = json.dumps(data, separators=(",", ":"))
