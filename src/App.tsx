@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence, useSpring, useTransform } from "framer-motion";
-import { Play, RotateCcw, Settings, MapPin, Share2, Check, Terminal, Copy, X, Server, ArrowLeft, Zap, Globe, Send, Cpu, Download, Upload, Gauge, Laptop, Building2, ExternalLink } from "lucide-react";
+import { Play, RotateCcw, Settings, MapPin, Share2, Check, Terminal, Copy, X, Server, ArrowLeft, Zap, Globe, Send, Cpu, Download, Upload, Gauge, Laptop, Building2, ExternalLink, ChevronRight } from "lucide-react";
 import { fetchNetworkInfo, measurePing, measureDownloadSpeed, measureUploadSpeed, NetworkInfo } from "./lib/speedTest";
 import { decodeGeoBase64, encodeGeoBase64, SharedGeoData } from "./lib/geoData";
 import { GeoReportView } from "./components/GeoReportView";
@@ -342,9 +342,29 @@ export default function App() {
     return "Мбит/с";
   };
 
+  const resolveCountryCode = (countryName?: string, existingCode?: string): string => {
+    if (existingCode && existingCode.length === 2) return existingCode.toUpperCase();
+    if (!countryName) return "FI";
+    const name = countryName.toLowerCase();
+    if (name.includes("finland") || name.includes("финлянд") || countryName.includes("FI") || countryName.includes("🇫🇮")) return "FI";
+    if (name.includes("germany") || name.includes("герман") || countryName.includes("DE") || countryName.includes("🇩🇪")) return "DE";
+    if (name.includes("netherlands") || name.includes("нидерланд") || countryName.includes("NL") || countryName.includes("🇳🇱")) return "NL";
+    if (name.includes("russia") || name.includes("росси") || countryName.includes("RU") || countryName.includes("🇷🇺")) return "RU";
+    if (name.includes("united states") || name.includes("usa") || countryName.includes("US") || countryName.includes("🇺🇸")) return "US";
+    if (name.includes("united kingdom") || name.includes("великобритан") || countryName.includes("GB") || countryName.includes("🇬🇧")) return "GB";
+    if (name.includes("france") || name.includes("франц") || countryName.includes("FR") || countryName.includes("🇫🇷")) return "FR";
+    if (name.includes("sweden") || name.includes("швеци") || countryName.includes("SE") || countryName.includes("🇸🇪")) return "SE";
+    if (name.includes("poland") || name.includes("польш") || countryName.includes("PL") || countryName.includes("🇵🇱")) return "PL";
+    if (name.includes("kazakhstan") || name.includes("казахстан") || countryName.includes("KZ") || countryName.includes("🇰🇿")) return "KZ";
+    if (name.includes("turkey") || name.includes("турци") || countryName.includes("TR") || countryName.includes("🇹🇷")) return "TR";
+    const match = countryName.match(/\b([A-Z]{2})\b/);
+    if (match) return match[1];
+    return "FI";
+  };
+
   const currentGeoData = useMemo<SharedGeoData>(() => {
     if (geoData) return geoData;
-    const cc = networkInfo?.country_code || (networkInfo?.country ? networkInfo.country.slice(0, 2).toUpperCase() : "FI");
+    const cc = resolveCountryCode(networkInfo?.country, networkInfo?.country_code);
     return {
       ip4: networkInfo?.ip || "",
       isp: networkInfo?.isp || "",
@@ -921,8 +941,8 @@ export default function App() {
           </motion.div>
         )}
 
-        {/* Tab Switcher between Speed & Geo: ONLY for server tests with geoData */}
-        {phase === "done" && isServerTest && (geoData || activeResultTab === 'geo') && (
+        {/* Tab Switcher between Speed & Geo: ONLY for server tests */}
+        {phase === "done" && isServerTest && (
           <motion.div 
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1078,6 +1098,32 @@ export default function App() {
                 isActive={phase === "pinging"}
               />
             </div>
+
+            {/* Server Test: Direct link to Geo report */}
+            {isServerTest && phase === "done" && (
+              <button
+                onClick={() => setActiveResultTab('geo')}
+                className="w-full mt-3 p-3.5 sm:p-4 rounded-2xl bg-black hover:bg-white/5 border border-white/10 hover:border-blue-500/40 text-blue-300 flex items-center justify-between transition-all group active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-3 text-left min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Globe className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <span>Геолокация сервисов (Geo)</span>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 font-semibold border border-blue-500/30">
+                        {resolveCountryCode(networkInfo?.country, networkInfo?.country_code)}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-400 mt-0.5 truncate">
+                      Доступность Google, YouTube, Netflix, ChatGPT и стримингов
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-blue-400 shrink-0 group-hover:translate-x-1 transition-transform ml-2" />
+              </button>
+            )}
 
             {/* Action Buttons */}
             <AnimatePresence>

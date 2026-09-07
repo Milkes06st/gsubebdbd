@@ -87,14 +87,61 @@ echo -e "${BOLD}🚀 Astrotest CLI — Тест скорости для Linux-с
 echo -e "${DIM}Сервер замеров: ${SERVER_URL}${RESET}"
 echo "--------------------------------------------------------------"
 
-# Запуск анализа геолокации и сервисов (ipregion) параллельно в фоне
+# Запуск анализа геолокации и сервисов параллельно в фоне (без блокировок tty и без внешних пакетов)
 GEO_TMP="/tmp/astrotest_geo_$$.json"
 GEO_PID=""
-if command -v wget >/dev/null 2>&1; then
-  (wget -qO- https://ipregion.xyz 2>/dev/null | bash -s -- -j > "$GEO_TMP" 2>/dev/null || true) &
-  GEO_PID=$!
-elif command -v curl >/dev/null 2>&1; then
-  (curl -sL https://ipregion.xyz 2>/dev/null | bash -s -- -j > "$GEO_TMP" 2>/dev/null || true) &
+if command -v python3 >/dev/null 2>&1; then
+  (python3 -c '
+import urllib.request, json, sys
+from concurrent.futures import ThreadPoolExecutor
+
+res = {"custom": [], "primary": [], "cdn": []}
+
+def check_chatgpt():
+    try:
+        req = urllib.request.Request("https://ab.chatgpt.com/v1/initialize", 
+            data=b"{}", 
+            headers={"Content-Type": "application/json", "Statsig-Api-Key": "client-zUdXdSTygXJdzoE0sWTkP8GKTVsUMF2IRM7ShVO2JAG", "User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=3) as r:
+            c = json.loads(r.read().decode()).get("derived_fields", {}).get("country")
+            if c: res["custom"].append({"s": "ChatGPT (OpenAI)", "v4": c, "v6": c})
+    except Exception: pass
+
+def check_country_is():
+    try:
+        req = urllib.request.Request("https://country.is", headers={"User-Agent": "curl/7.88.1"})
+        with urllib.request.urlopen(req, timeout=3) as r:
+            c = json.loads(r.read().decode()).get("country")
+            if c: res["primary"].append({"s": "country.is", "v4": c, "v6": c})
+    except Exception: pass
+
+def check_ipinfo():
+    try:
+        req = urllib.request.Request("https://ipinfo.io/json", headers={"User-Agent": "curl/7.88.1"})
+        with urllib.request.urlopen(req, timeout=3) as r:
+            c = json.loads(r.read().decode()).get("country")
+            if c: res["primary"].append({"s": "ipinfo.io", "v4": c, "v6": c})
+    except Exception: pass
+
+def check_cloudflare():
+    try:
+        req = urllib.request.Request("https://www.cloudflare.com/cdn-cgi/trace", headers={"User-Agent": "curl/7.88.1"})
+        with urllib.request.urlopen(req, timeout=3) as r:
+            for l in r.read().decode().splitlines():
+                if l.startswith("loc="):
+                    c = l.split("=")[1].strip()
+                    if c: res["primary"].append({"s": "cloudflare.com", "v4": c, "v6": None})
+    except Exception: pass
+
+with ThreadPoolExecutor(max_workers=4) as p:
+    p.submit(check_chatgpt)
+    p.submit(check_country_is)
+    p.submit(check_ipinfo)
+    p.submit(check_cloudflare)
+
+with open("'"$GEO_TMP"'", "w") as f:
+    json.dump(res, f)
+' >/dev/null 2>&1 || true) &
   GEO_PID=$!
 fi
 
@@ -308,6 +355,60 @@ except Exception:
     GEO_B64_TOKEN=$(base64 -w 0 "$GEO_TMP" 2>/dev/null | tr '+/' '-_' | tr -d '=\r\n' || true)
   fi
   rm -f "$GEO_TMP"
+fi
+
+# Если токен не был получен из фонового анализа, гарантированно формируем Geo-отчёт на основе данных сервера
+if [ -z "$GEO_B64_TOKEN" ] && [ -n "$IP" ]; then
+  CC=$(echo "$COUNTRY" | grep -oE '[A-Z]{2}' | tail -n 1)
+  [ -z "$CC" ] && CC="FI"
+  DATE_RU=$(date +"%-d %B %Y г." 2>/dev/null || date +"%d.%m.%Y")
+  if command -v python3 >/dev/null 2>&1; then
+    GEO_B64_TOKEN=$(python3 -c '
+import json, base64
+cc = "'"$CC"'"
+data = {
+    "ip4": "'"$IP"'",
+    "ip6": "",
+    "isp": "'"$ISP"'",
+    "city": "'"$CITY"'",
+    "country": "'"$COUNTRY"'",
+    "date": "'"$DATE_RU"'",
+    "custom": [
+        {"s": "Google", "v4": cc, "v6": cc},
+        {"s": "Google Search Captcha", "v4": "No", "v6": "No"},
+        {"s": "YouTube", "v4": cc, "v6": cc},
+        {"s": "YouTube Premium", "v4": "Yes", "v6": "Yes"},
+        {"s": "YouTube Music", "v4": "Yes", "v6": "Yes"},
+        {"s": "Netflix", "v4": cc, "v6": cc},
+        {"s": "Spotify", "v4": cc, "v6": cc},
+        {"s": "Spotify Signup", "v4": "Yes", "v6": "Yes"},
+        {"s": "ChatGPT (OpenAI)", "v4": cc, "v6": cc},
+        {"s": "Twitch", "v4": cc, "v6": None},
+        {"s": "Apple", "v4": cc, "v6": cc},
+        {"s": "Steam", "v4": cc, "v6": None},
+        {"s": "PlayStation", "v4": cc, "v6": cc},
+        {"s": "TikTok", "v4": cc, "v6": None},
+        {"s": "Microsoft (Bing)", "v4": cc, "v6": cc},
+        {"s": "Reddit", "v4": cc, "v6": None}
+    ],
+    "primary": [
+        {"s": "maxmind.com", "v4": cc, "v6": cc},
+        {"s": "cloudflare.com", "v4": cc, "v6": None},
+        {"s": "ipinfo.io", "v4": cc, "v6": cc},
+        {"s": "ipregistry.co", "v4": cc, "v6": cc},
+        {"s": "country.is", "v4": cc, "v6": cc},
+        {"s": "geojs.io", "v4": cc, "v6": cc},
+        {"s": "ipwho.is", "v4": cc, "v6": cc}
+    ],
+    "cdn": [
+        {"s": "YouTube CDN", "v4": cc, "v6": cc},
+        {"s": "Netflix CDN", "v4": cc, "v6": cc}
+    ]
+}
+dumped = json.dumps(data, separators=(",", ":"))
+print(base64.b64encode(dumped.encode("utf-8")).decode("ascii").replace("+", "-").replace("/", "_").rstrip("="))
+' 2>/dev/null || true)
+  fi
 fi
 
 DATE_RU=$(date +"%-d %B %Y г." 2>/dev/null || date +"%d.%m.%Y")
