@@ -208,6 +208,7 @@ export default function App() {
 
   // Sharing & Shared Link state
   const [isSharedView, setIsSharedView] = useState(false);
+  const [isServerTest, setIsServerTest] = useState(false);
   const [sharedMeta, setSharedMeta] = useState<{ date?: string } | null>(null);
   const [copiedToast, setCopiedToast] = useState(false);
   const [activeResultTab, setActiveResultTab] = useState<'speed' | 'geo'>('speed');
@@ -230,6 +231,7 @@ export default function App() {
     if (rawGeoB64) {
       const decodedGeo = decodeGeoBase64(rawGeoB64);
       if (decodedGeo) {
+        setIsServerTest(true);
         setGeoData(decodedGeo);
         setActiveResultTab('geo');
         setIsSharedView(true);
@@ -248,14 +250,12 @@ export default function App() {
       }
     }
 
-    // 2. Проверка на результаты теста скорости (/speedtest/:b64 или ?result=:b64 или #speedtest/:b64)
-    const speedtestMatch = pathname.match(/\/speedtest\/([A-Za-z0-9+/=_-]+)/i);
-    const queryB64 = searchParams.get("result") || searchParams.get("b64");
-    const hashMatch = window.location.hash.match(/#\/?speedtest\/([A-Za-z0-9+/=_-]+)/i);
-
-    const rawB64 = speedtestMatch?.[1] || queryB64 || hashMatch?.[1];
-    if (rawB64) {
-      const decoded = decodeSpeedtestBase64(rawB64);
+    // 2. Проверка на замер сервера (/speedtest/server/:b64 или #speedtest/server/:b64)
+    const serverSpeedtestMatch = pathname.match(/\/speedtest\/server\/([A-Za-z0-9+/=_-]+)/i) ||
+                                window.location.hash.match(/#\/?speedtest\/server\/([A-Za-z0-9+/=_-]+)/i);
+    if (serverSpeedtestMatch?.[1]) {
+      setIsServerTest(true);
+      const decoded = decodeSpeedtestBase64(serverSpeedtestMatch[1]);
       if (decoded) {
         setDownloadMbps(decoded.download);
         setUploadMbps(decoded.upload);
@@ -270,6 +270,44 @@ export default function App() {
             : (decoded as any).geo;
           if (g) setGeoData(g);
         }
+        if (decoded.isp || decoded.city || decoded.ip) {
+          setNetworkInfo({
+            ip: decoded.ip || "—",
+            isp: decoded.isp || "Интернет-провайдер",
+            city: decoded.city || "",
+            country: decoded.country || "",
+            country_code: ""
+          });
+        }
+        if (decoded.os && decoded.browser) {
+          setClientSystem({
+            os: decoded.os,
+            browser: decoded.browser
+          });
+        }
+        return;
+      }
+    }
+
+    // 3. Проверка на обычные результаты теста скорости (/speedtest/:b64 или ?result=:b64 или #speedtest/:b64)
+    const speedtestMatch = pathname.match(/\/speedtest\/(?!server\/)([A-Za-z0-9+/=_-]+)/i);
+    const queryB64 = searchParams.get("result") || searchParams.get("b64");
+    const hashMatch = window.location.hash.match(/#\/?speedtest\/(?!server\/)([A-Za-z0-9+/=_-]+)/i);
+
+    const rawB64 = speedtestMatch?.[1] || queryB64 || hashMatch?.[1];
+    if (rawB64) {
+      setIsServerTest(false);
+      setGeoData(null);
+      setActiveResultTab('speed');
+      const decoded = decodeSpeedtestBase64(rawB64);
+      if (decoded) {
+        setDownloadMbps(decoded.download);
+        setUploadMbps(decoded.upload);
+        setPing(decoded.ping);
+        if (decoded.unit) setUnit(decoded.unit);
+        setPhase("done");
+        setIsSharedView(true);
+        setSharedMeta({ date: decoded.date });
         if (decoded.isp || decoded.city || decoded.ip) {
           setNetworkInfo({
             ip: decoded.ip || "—",
@@ -378,6 +416,9 @@ export default function App() {
     };
 
     const b64 = encodeSpeedtestBase64(payload);
+    if (isServerTest) {
+      return `${origin}/speedtest/server/${b64}`;
+    }
     return `${origin}/speedtest/${b64}`;
   };
 
@@ -814,7 +855,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className={cn("z-10 w-full flex flex-col items-center transition-all duration-300", activeResultTab === 'geo' ? "max-w-4xl" : "max-w-xl")}>
+      <div className={cn("z-10 w-full flex flex-col items-center transition-all duration-300", isServerTest && activeResultTab === 'geo' ? "max-w-4xl" : "max-w-xl")}>
         {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
@@ -867,19 +908,21 @@ export default function App() {
             className="w-full mb-4 p-4 rounded-[20px] bg-black flex items-center gap-4 text-left"
           >
             <div className="h-12 w-12 rounded-2xl bg-black text-blue-500 flex items-center justify-center shrink-0">
-              <AstroLogo className="h-6 w-6 text-blue-500" />
+              {isServerTest ? <Server className="h-6 w-6 text-blue-500" /> : <AstroLogo className="h-6 w-6 text-blue-500" />}
             </div>
             <div className="min-w-0">
-              <div className="text-xs text-blue-500 font-bold uppercase tracking-wider">СОХРАНЁННЫЙ ЗАМЕР</div>
+              <div className="text-xs text-blue-500 font-bold uppercase tracking-wider">
+                {isServerTest ? "СОХРАНЁННЫЙ ЗАМЕР СЕРВЕРА" : "СОХРАНЁННЫЙ ЗАМЕР"}
+              </div>
               <div className="text-sm sm:text-base text-blue-400 font-medium mt-0.5 truncate">
-                {sharedMeta?.date ? `Тест проведён ${sharedMeta.date}` : "Результаты теста"}
+                {sharedMeta?.date ? `Тест проведён ${sharedMeta.date}` : (isServerTest ? "Результаты замера сервера" : "Результаты теста")}
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* Tab Switcher between Speed & Geo when test is complete */}
-        {phase === "done" && (
+        {/* Tab Switcher between Speed & Geo: ONLY for server tests with geoData */}
+        {phase === "done" && isServerTest && (geoData || activeResultTab === 'geo') && (
           <motion.div 
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
@@ -912,7 +955,7 @@ export default function App() {
           </motion.div>
         )}
 
-        {activeResultTab === 'geo' ? (
+        {isServerTest && activeResultTab === 'geo' && currentGeoData ? (
           <div className="w-full flex flex-col items-center">
             <GeoReportView 
               geoData={currentGeoData} 
@@ -946,7 +989,10 @@ export default function App() {
 
               <button
                 onClick={() => {
-                  if (isSharedView) setIsSharedView(false);
+                  if (isSharedView) {
+                    setIsSharedView(false);
+                    setIsServerTest(false);
+                  }
                   setActiveResultTab('speed');
                   runTest();
                 }}
@@ -1066,7 +1112,10 @@ export default function App() {
 
                     <button
                       onClick={() => {
-                        if (isSharedView) setIsSharedView(false);
+                        if (isSharedView) {
+                          setIsSharedView(false);
+                          setIsServerTest(false);
+                        }
                         runTest();
                       }}
                       className="w-full bg-black hover:bg-white/5 text-white rounded-2xl py-3.5 font-bold text-base flex items-center justify-center gap-2.5 transition-colors border border-white/15 active:scale-[0.99]"

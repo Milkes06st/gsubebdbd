@@ -321,7 +321,7 @@ fi
 B64_TOKEN=$(printf "%s" "$PAYLOAD_JSON" | base64 2>/dev/null | tr -d '\r\n' | tr '+/' '-_' | tr -d '=' || true)
 
 if [ -n "$B64_TOKEN" ]; then
-  WEB_RESULT_URL="${SERVER_URL}/speedtest/${B64_TOKEN}"
+  WEB_RESULT_URL="${SERVER_URL}/speedtest/server/${B64_TOKEN}"
   echo -e "${BOLD}🌐 Результаты замера в Web (Astrotest):${RESET}"
   echo -e "${BLUE}${BOLD}${WEB_RESULT_URL}${RESET}"
 fi
